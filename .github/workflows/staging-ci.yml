@@ -1,0 +1,264 @@
+name: Staging CI (Batched)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"         # Every 30 minutes
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force run even if no new commits"
+        type: boolean
+        default: false
+      skip_claude_gate:
+        description: "Skip Claude review gate (bypass CRITICAL block)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write                    # Claude review creates issues for critical findings
+  pull-requests: write             # Auto-promote creates + merges PR to main
+
+concurrency:
+  group: staging-ci
+  cancel-in-progress: false        # Let running suites finish
+
+jobs:
+  # ── Gate: check for new commits ──────────────────────────────────
+  check-changes:
+    name: Check for new commits
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+      last_tested: ${{ steps.check.outputs.last_tested }}
+      current_head: ${{ steps.check.outputs.current_head }}
+      diff_range: ${{ steps.check.outputs.diff_range }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Check for changes since last tested
+        id: check
+        run: |
+          CURRENT_HEAD=$(git rev-parse HEAD)
+          echo "current_head=${CURRENT_HEAD}" >> "$GITHUB_OUTPUT"
+
+          if git rev-parse staging-tested >/dev/null 2>&1; then
+            LAST_TESTED=$(git rev-parse staging-tested)
+          else
+            LAST_TESTED=""
+          fi
+          echo "last_tested=${LAST_TESTED}" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$LAST_TESTED" ] && [ "$LAST_TESTED" = "$CURRENT_HEAD" ]; then
+            echo "No new commits since last tested (${CURRENT_HEAD})"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "diff_range=" >> "$GITHUB_OUTPUT"
+          else
+            if [ -n "$LAST_TESTED" ]; then
+              COMMIT_COUNT=$(git rev-list --count "${LAST_TESTED}..HEAD")
+              echo "Found ${COMMIT_COUNT} new commit(s) since last tested"
+              echo "diff_range=${LAST_TESTED}..${CURRENT_HEAD}" >> "$GITHUB_OUTPUT"
+            else
+              # First run: use merge-base with main to capture all staging changes
+              git fetch origin main
+              MERGE_BASE=$(git merge-base origin/main HEAD)
+              echo "First run -- reviewing from merge-base ${MERGE_BASE}"
+              echo "diff_range=${MERGE_BASE}..${CURRENT_HEAD}" >> "$GITHUB_OUTPUT"
+            fi
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Force override from workflow_dispatch
+          if [ "${{ inputs.force }}" = "true" ]; then
+            echo "Force run requested"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Run full test suite ──────────────────────────────────────────
+  tests:
+    name: Test Suite
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    uses: ./.github/workflows/test.yml
+
+  # ── Run E2E browser tests ────────────────────────────────────────
+  e2e:
+    name: E2E Browser Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    uses: ./.github/workflows/e2e.yml
+
+  # ── Thorough Claude Code review (reusable workflow) ──────────────
+  claude-review:
+    name: Claude Code Review
+    needs: check-changes
+    if: needs.check-changes.outputs.has_changes == 'true'
+    uses: ./.github/workflows/claude-review.yml
+    with:
+      diff_range: ${{ needs.check-changes.outputs.diff_range }}
+      ref: staging
+    secrets: inherit
+
+  # ── Gate: block on high-confidence findings unless overridden ────
+  claude-gate:
+    name: Claude Review Gate
+    needs: [check-changes, tests, e2e, claude-review]
+    if: >
+      always() &&
+      needs.check-changes.outputs.has_changes == 'true' &&
+      needs.tests.result == 'success' &&
+      needs.e2e.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      gate_passed: ${{ steps.gate.outputs.passed }}
+    steps:
+      - name: Check for skip-claude-gate label
+        id: label-check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SKIP=$(gh label list --json name -q '.[].name' | grep -c 'skip-claude-gate' || true)
+          echo "skip_label=${SKIP}" >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate gate
+        id: gate
+        run: |
+          HAS_BLOCKING="${{ needs.claude-review.outputs.has_blocking }}"
+          SKIP_LABEL="${{ steps.label-check.outputs.skip_label }}"
+          SKIP_INPUT="${{ inputs.skip_claude_gate }}"
+
+          if [ "$HAS_BLOCKING" = "true" ]; then
+            echo "::warning::Claude review found blocking issues (CRITICAL ≥80 confidence)"
+            if [ "$SKIP_LABEL" -gt 0 ] || [ "$SKIP_INPUT" = "true" ]; then
+              echo "::warning::Gate overridden by skip-claude-gate label or input"
+              echo "passed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "::error::Blocking promotion to main due to CRITICAL findings (≥80 confidence)"
+              echo "passed=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          else
+            echo "No blocking findings (CRITICAL ≥80). Gate passed."
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Update tested tag on success ─────────────────────────────────
+  update-tag:
+    name: Update staging-tested tag
+    needs: [check-changes, claude-gate]
+    if: >
+      always() &&
+      needs.check-changes.outputs.has_changes == 'true' &&
+      needs.claude-gate.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+          fetch-depth: 1
+
+      - name: Update staging-tested tag
+        run: |
+          git tag -f staging-tested "${{ needs.check-changes.outputs.current_head }}"
+          git push origin staging-tested --force
+          echo "Updated staging-tested tag to ${{ needs.check-changes.outputs.current_head }}"
+
+  # ── Auto-promote: create PR from staging to main and merge ──────
+  promote-to-main:
+    name: Promote to Main
+    needs: [check-changes, claude-gate, update-tag]
+    if: >
+      needs.check-changes.outputs.has_changes == 'true' &&
+      needs.claude-gate.result == 'success' &&
+      needs.update-tag.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_RELEASES_MANAGER_APP_ID }}
+          private-key: ${{ secrets.GH_RELEASES_MANAGER_APP_PRIVATE_KEY }}
+
+      - name: Check if staging is ahead of main
+        id: ahead-check
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git fetch origin main
+          AHEAD=$(git rev-list --count origin/main..origin/staging)
+          echo "commits_ahead=${AHEAD}" >> "$GITHUB_OUTPUT"
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "Staging is not ahead of main. Nothing to promote."
+          else
+            echo "Staging is ${AHEAD} commits ahead of main."
+          fi
+
+      - name: Create and merge PR to main
+        if: steps.ahead-check.outputs.commits_ahead != '0'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          RANGE="${{ needs.check-changes.outputs.diff_range }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          # Check for existing open staging->main PR
+          EXISTING=$(gh pr list --base main --head staging --state open --json number -q '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "Existing PR #${EXISTING} found. Merging it."
+            gh pr merge "$EXISTING" --merge --auto
+            exit 0
+          fi
+
+          # Create new PR
+          PR_URL=$(gh pr create \
+            --base main \
+            --head staging \
+            --title "chore: promote staging to main (${TIMESTAMP})" \
+            --body "## Auto-promotion from staging CI
+
+          **Batch range:** \`${RANGE}\`
+          **Triggered by:** Staging CI batch at ${TIMESTAMP}
+
+          All gates passed:
+          - Tests: passed
+          - Claude Code review: no CRITICAL findings (≥80 confidence)
+          - E2E: passed
+
+          ---
+          *Auto-created by staging-ci workflow*" \
+            --label "staging-ci-review")
+
+          # Auto-merge (uses App token to bypass branch protection)
+          PR_NUM=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          gh pr merge "$PR_NUM" --merge --auto
+
+  # ── Report ───────────────────────────────────────────────────────
+  report:
+    name: Staging CI Summary
+    needs: [check-changes, tests, e2e, claude-review, claude-gate, update-tag, promote-to-main]
+    if: always() && needs.check-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## Staging CI Batch Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Check | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tests | ${{ needs.tests.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| E2E | ${{ needs.e2e.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Claude Review | ${{ needs.claude-review.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Claude Gate | ${{ needs.claude-gate.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tag Updated | ${{ needs.update-tag.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Promoted to Main | ${{ needs.promote-to-main.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Range: ${{ needs.check-changes.outputs.diff_range }}" >> "$GITHUB_STEP_SUMMARY"

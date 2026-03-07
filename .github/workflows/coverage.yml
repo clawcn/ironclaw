@@ -1,7 +1,9 @@
 name: Code Coverage
 on:
   push:
-    branches: [main]
+    branches: [main]               # Runs when staging merges to main
+  workflow_call:                    # Optional: staging-ci can invoke
+  workflow_dispatch:                # Manual trigger
 
 permissions:
   id-token: write

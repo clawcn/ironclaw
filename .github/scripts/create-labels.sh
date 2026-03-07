@@ -64,6 +64,9 @@ create "scope: dependencies"  "90A4AE" "Dependency updates"
 
 echo "==> Creating workflow labels..."
 create "skip-regression-check" "9E9E9E" "Acknowledged: fix without regression test"
+create "staging-ci-review"     "D93F0B" "Auto-created by staging CI Claude Code review"
+create "skip-claude-gate"      "FBCA04" "Override: bypass Claude CRITICAL gate on staging CI"
+create "low-confidence"         "C5DEF5" "Claude review finding with <50 confidence"
 
 echo "==> Creating contributor labels..."
 create "contributor: new"         "FFF9C4" "First-time contributor"
