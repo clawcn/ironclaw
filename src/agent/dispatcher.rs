@@ -1141,6 +1141,7 @@ mod tests {
             http_interceptor: None,
             transcription: None,
             document_extraction: None,
+            builder: None,
         };
 
         Agent::new(
@@ -1980,6 +1981,7 @@ mod tests {
             http_interceptor: None,
             transcription: None,
             document_extraction: None,
+            builder: None,
         };
 
         Agent::new(
@@ -2097,6 +2099,7 @@ mod tests {
                 http_interceptor: None,
                 transcription: None,
                 document_extraction: None,
+                builder: None,
             };
 
             Agent::new(
