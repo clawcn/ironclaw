@@ -1555,9 +1555,7 @@ mod tests {
                         .unwrap_or_else(|| "Job failed (no error message recorded)".to_string());
                     Some((RunStatus::Failed, summary))
                 }
-                JobState::Cancelled => {
-                    Some((RunStatus::Failed, "Job was cancelled".to_string()))
-                }
+                JobState::Cancelled => Some((RunStatus::Failed, "Job was cancelled".to_string())),
                 JobState::Pending | JobState::InProgress | JobState::Stuck => None,
             }
         };
