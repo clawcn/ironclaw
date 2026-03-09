@@ -124,6 +124,7 @@ mod tests {
             None,
             tools,
             safety,
+            false,
         ));
 
         // Insert a cron routine with next_fire_at in the past.
@@ -201,6 +202,7 @@ mod tests {
             None,
             tools,
             safety,
+            false,
         ));
 
         // Insert an event routine matching "deploy.*production".
@@ -439,6 +441,7 @@ mod tests {
             None,
             tools,
             safety,
+            false,
         ));
 
         // Insert an event routine with 1-hour cooldown.

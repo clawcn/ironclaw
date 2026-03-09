@@ -58,6 +58,8 @@ pub struct RoutineEngine {
     tools: Arc<ToolRegistry>,
     /// Safety layer for tool output sanitization.
     safety: Arc<SafetyLayer>,
+    /// Whether Docker sandbox is available for full-job dispatch.
+    sandbox_available: bool,
 }
 
 impl RoutineEngine {
@@ -71,6 +73,7 @@ impl RoutineEngine {
         scheduler: Option<Arc<Scheduler>>,
         tools: Arc<ToolRegistry>,
         safety: Arc<SafetyLayer>,
+        sandbox_available: bool,
     ) -> Self {
         Self {
             config,
@@ -83,6 +86,7 @@ impl RoutineEngine {
             scheduler,
             tools,
             safety,
+            sandbox_available,
         }
     }
 
@@ -480,6 +484,7 @@ impl RoutineEngine {
             scheduler: self.scheduler.clone(),
             tools: self.tools.clone(),
             safety: self.safety.clone(),
+            sandbox_available: self.sandbox_available,
         };
 
         tokio::spawn(async move {
@@ -515,6 +520,7 @@ impl RoutineEngine {
             scheduler: self.scheduler.clone(),
             tools: self.tools.clone(),
             safety: self.safety.clone(),
+            sandbox_available: self.sandbox_available,
         };
 
         // Record the run in DB, then spawn execution
@@ -565,6 +571,7 @@ struct EngineContext {
     scheduler: Option<Arc<Scheduler>>,
     tools: Arc<ToolRegistry>,
     safety: Arc<SafetyLayer>,
+    sandbox_available: bool,
 }
 
 /// Execute a routine run. Handles both lightweight and full_job modes.
@@ -738,6 +745,14 @@ async fn execute_full_job(
     max_iterations: u32,
     tool_permissions: &[String],
 ) -> Result<(RunStatus, Option<String>, Option<i32>), RoutineError> {
+    if !ctx.sandbox_available {
+        return Err(RoutineError::JobDispatchFailed {
+            reason: "Sandbox is enabled but Docker is not available. \
+                     Install Docker or set SANDBOX_ENABLED=false to run full_job routines."
+                .to_string(),
+        });
+    }
+
     let scheduler = ctx
         .scheduler
         .as_ref()
@@ -1507,6 +1522,18 @@ mod tests {
     #[test]
     fn test_full_job_dispatch_returns_running_status() {
         assert_eq!(RunStatus::Running.to_string(), "running");
+    }
+
+    #[test]
+    fn test_sandbox_unavailable_error_message() {
+        let err = crate::error::RoutineError::JobDispatchFailed {
+            reason: "Sandbox is enabled but Docker is not available. \
+                     Install Docker or set SANDBOX_ENABLED=false to run full_job routines."
+                .to_string(),
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("Docker is not available"));
+        assert!(msg.contains("SANDBOX_ENABLED"));
     }
 
     /// Regression test for #697: full_job routines were immediately marked Ok
