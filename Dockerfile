@@ -29,6 +29,7 @@ COPY registry/ registry/
 COPY channels-src/ channels-src/
 COPY wit/ wit/
 COPY providers.json providers.json
+COPY benches/ benches/
 
 RUN cargo build --release --bin ironclaw
 
