@@ -242,7 +242,7 @@ impl SetupWizard {
             self.persist_after_step().await;
 
             // Personal onboarding now happens conversationally during the
-            // user's first interaction with the assistant (see First Contact
+            // user's first interaction with the assistant (see bootstrap
             // block in workspace/mod.rs system_prompt_for_context).
         }
 

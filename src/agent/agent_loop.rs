@@ -537,6 +537,76 @@ impl Agent {
         // Extract engine ref for use in message loop
         let routine_engine_for_loop = routine_handle.as_ref().map(|(_, e)| Arc::clone(e));
 
+        // Proactive bootstrap: if this is a freshly seeded workspace, send
+        // the greeting synchronously (persist-first so gateway sees it via history).
+        let bootstrap_pending = self
+            .workspace()
+            .is_some_and(|ws| ws.take_bootstrap_pending());
+        if bootstrap_pending {
+            tracing::debug!("Fresh workspace detected — sending bootstrap greeting");
+
+            // Resolve the assistant thread early so we can emit a Thinking
+            // status before the LLM call — gateway clients that are already
+            // connected will see the spinner immediately.
+            let assistant_thread_id = if let Some(store) = self.store() {
+                store
+                    .get_or_create_assistant_conversation("default", "gateway")
+                    .await
+                    .ok()
+            } else {
+                None
+            };
+
+            // Emit a Thinking status to the gateway so the spinner appears
+            // while the LLM generates the greeting.
+            if let Some(tid) = &assistant_thread_id {
+                let meta = serde_json::json!({ "thread_id": tid.to_string() });
+                let _ = self
+                    .channels
+                    .send_status(
+                        "gateway",
+                        StatusUpdate::Thinking("Preparing your greeting…".into()),
+                        &meta,
+                    )
+                    .await;
+            }
+
+            let bootstrap_msg = IncomingMessage::new(
+                "system",
+                "default",
+                "Hello! I just set you up. Introduce yourself and help me get started.",
+            );
+            match self.handle_message(&bootstrap_msg).await {
+                Ok(Some(response)) if !response.is_empty() => {
+                    // Persist into the assistant thread and register it so
+                    // gateway clients see the greeting via history.
+                    if let Some(id) = assistant_thread_id {
+                        self.persist_assistant_response(id, "default", &response)
+                            .await;
+                        let (session, _) = self
+                            .session_manager
+                            .resolve_thread("default", "gateway", None)
+                            .await;
+                        self.session_manager
+                            .register_thread("default", "gateway", id, session)
+                            .await;
+                    }
+
+                    // Broadcast only to the gateway channel — CLI renders its
+                    // own welcome independently and doesn't need a ghost thread.
+                    let mut out = OutgoingResponse::text(response);
+                    out.thread_id = assistant_thread_id.map(|id| id.to_string());
+                    let _ = self.channels.broadcast("gateway", "default", out).await;
+                }
+                Ok(_) => {
+                    tracing::debug!("Bootstrap greeting produced no response");
+                }
+                Err(e) => {
+                    tracing::warn!("Bootstrap greeting failed: {}", e);
+                }
+            }
+        }
+
         // Main message loop
         tracing::debug!("Agent {} ready and listening", self.config.name);
 
@@ -738,9 +808,6 @@ impl Agent {
     }
 
     async fn handle_message(&self, message: &IncomingMessage) -> Result<Option<String>, Error> {
-        // Log at info level only for tracking without exposing PII (user_id can be a phone number)
-        tracing::info!(message_id = %message.id, "Processing message");
-
         // Log sensitive details at debug level for troubleshooting
         tracing::debug!(
             message_id = %message.id,
@@ -807,10 +874,6 @@ impl Agent {
         }
 
         // Resolve session and thread
-        tracing::debug!(
-            message_id = %message.id,
-            "Resolving session and thread"
-        );
         let (session, thread_id) = self
             .session_manager
             .resolve_thread(
@@ -819,7 +882,7 @@ impl Agent {
                 message.thread_id.as_deref(),
             )
             .await;
-        tracing::info!(
+        tracing::debug!(
             message_id = %message.id,
             thread_id = %thread_id,
             "Resolved session and thread"

@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 use crate::agent::routine::{
     NotifyConfig, Routine, RoutineAction, RoutineGuardrails, Trigger, next_cron_fire,
+    normalize_cron_expression,
 };
 use crate::agent::routine_engine::RoutineEngine;
 use crate::context::JobContext;
@@ -68,7 +69,7 @@ impl Tool for RoutineCreateTool {
                 },
                 "schedule": {
                     "type": "string",
-                    "description": "Cron expression (for cron trigger). E.g. '0 9 * * MON-FRI' for weekdays at 9am. Uses 6-field cron (sec min hour day month weekday)."
+                    "description": "Cron expression (for cron trigger). Standard 5-field format: 'min hour day month weekday'. E.g. '0 9 * * MON-FRI' for weekdays at 9am, '0 9 * * 1' for Mondays at 9am. Also accepts 6-field (with seconds) or 7-field (sec min hour day month weekday year)."
                 },
                 "event_pattern": {
                     "type": "string",
@@ -151,7 +152,7 @@ impl Tool for RoutineCreateTool {
         // Build trigger
         let trigger = match trigger_type {
             "cron" => {
-                let schedule =
+                let raw_schedule =
                     params
                         .get("schedule")
                         .and_then(|v| v.as_str())
@@ -160,6 +161,8 @@ impl Tool for RoutineCreateTool {
                                 "cron trigger requires 'schedule'".to_string(),
                             )
                         })?;
+                // Normalize 5/6-field cron to 7-field for the cron crate.
+                let schedule = normalize_cron_expression(raw_schedule);
                 let timezone = params
                     .get("timezone")
                     .and_then(|v| v.as_str())
@@ -174,11 +177,11 @@ impl Tool for RoutineCreateTool {
                     })
                     .transpose()?;
                 // Validate cron expression
-                next_cron_fire(schedule, timezone.as_deref()).map_err(|e| {
+                next_cron_fire(&schedule, timezone.as_deref()).map_err(|e| {
                     ToolError::InvalidParameters(format!("invalid cron schedule: {e}"))
                 })?;
                 Trigger::Cron {
-                    schedule: schedule.to_string(),
+                    schedule,
                     timezone,
                 }
             }
@@ -539,7 +542,10 @@ impl Tool for RoutineUpdateTool {
             })
             .transpose()?;
 
-        let new_schedule = params.get("schedule").and_then(|v| v.as_str());
+        let new_schedule = params
+            .get("schedule")
+            .and_then(|v| v.as_str())
+            .map(normalize_cron_expression);
 
         if new_schedule.is_some() || new_timezone.is_some() {
             // Extract existing cron fields (cloned to avoid borrow conflict)
@@ -549,7 +555,9 @@ impl Tool for RoutineUpdateTool {
             };
 
             if let Some((old_schedule, old_tz)) = existing_cron {
-                let effective_schedule = new_schedule.unwrap_or(&old_schedule);
+                let effective_schedule = new_schedule
+                    .as_deref()
+                    .unwrap_or(&old_schedule);
                 let effective_tz = new_timezone.or(old_tz);
                 // Validate
                 next_cron_fire(effective_schedule, effective_tz.as_deref()).map_err(|e| {

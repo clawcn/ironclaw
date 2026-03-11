@@ -94,7 +94,7 @@ GENERAL RULES:
 
 /// JSON schema reference for the psychographic profile.
 ///
-/// Shared by onboarding (onboarding_chat.rs) and first-contact (workspace/mod.rs)
+/// Shared by bootstrap onboarding and profile evolution (workspace/mod.rs)
 /// prompt generation to ensure the LLM always targets the same structure.
 pub const PROFILE_JSON_SCHEMA: &str = r#"{
   "version": 2,
@@ -601,7 +601,7 @@ impl Default for PsychographicProfile {
 impl PsychographicProfile {
     /// Whether this profile contains meaningful user data beyond defaults.
     ///
-    /// Used to decide whether to inject First Contact onboarding instructions
+    /// Used to decide whether to inject bootstrap onboarding instructions
     /// or profile-based personalization into the system prompt.
     pub fn is_populated(&self) -> bool {
         !self.preferred_name.is_empty()

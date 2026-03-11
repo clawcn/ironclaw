@@ -390,4 +390,65 @@ mod advanced {
         rig.verify_trace_expects(&trace, &responses);
         rig.shutdown();
     }
+
+    // -----------------------------------------------------------------------
+    // 9. Bootstrap greeting fires on fresh workspace
+    // -----------------------------------------------------------------------
+
+    /// Verifies that a fresh workspace triggers a proactive bootstrap greeting
+    /// before the user sends any message, and that follow-up interaction works.
+    #[tokio::test]
+    async fn bootstrap_greeting_fires() {
+        let trace = LlmTrace::from_file(format!("{FIXTURES}/bootstrap_greeting.json")).unwrap();
+        let rig = TestRigBuilder::new()
+            .with_trace(trace)
+            .with_bootstrap()
+            .build()
+            .await;
+
+        // The bootstrap greeting should arrive without us sending any message.
+        let responses = rig.wait_for_responses(1, TIMEOUT).await;
+        assert!(
+            !responses.is_empty(),
+            "bootstrap greeting should produce a response"
+        );
+        let greeting = &responses[0].content;
+        assert!(
+            !greeting.is_empty(),
+            "bootstrap greeting should not be empty"
+        );
+
+        // Verify the LLM saw the bootstrap trigger in the request.
+        // The greeting response should contain onboarding-style content.
+        let lower = greeting.to_lowercase();
+        assert!(
+            lower.contains("help") || lower.contains("assistant") || lower.contains("routine"),
+            "bootstrap response should mention capabilities, got: {greeting}"
+        );
+
+        // The bootstrap greeting must carry a thread_id so the gateway can
+        // route it to the correct assistant conversation.
+        assert!(
+            responses[0].thread_id.is_some(),
+            "bootstrap greeting response should have a thread_id set"
+        );
+
+        // Follow-up: user responds, triggering profile write via memory_write.
+        rig.send_message("I'm Alex, I'm a software engineer.").await;
+        let responses2 = rig.wait_for_responses(3, TIMEOUT).await;
+        assert!(
+            responses2.len() >= 2,
+            "expected at least 2 total responses (bootstrap + follow-up), got {}",
+            responses2.len()
+        );
+
+        // Verify memory_write was called to save the profile.
+        let started = rig.tool_calls_started();
+        assert!(
+            started.iter().any(|s| s == "memory_write"),
+            "bootstrap flow should call memory_write to save profile, got: {started:?}"
+        );
+
+        rig.shutdown();
+    }
 }

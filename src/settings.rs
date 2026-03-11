@@ -104,8 +104,8 @@ pub struct Settings {
     /// (not during the setup wizard), after the agent builds a psychographic
     /// profile via `memory_write`.
     ///
-    // TODO: Wire into agent loop — currently the system uses `is_populated()`
-    // (content check) to gate First Contact. This flag will eventually
+    // TODO: Wire into agent loop — currently the system uses bootstrap presence
+    // and `is_populated()` to gate onboarding. This flag will eventually
     // distinguish "never onboarded" from "onboarded but profile was reset".
     #[serde(default, alias = "personal_onboarding_completed")]
     pub profile_onboarding_completed: bool,

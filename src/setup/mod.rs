@@ -11,7 +11,7 @@
 //! 8. Heartbeat (background tasks)
 //!
 //! Personal onboarding happens conversationally during the user's first
-//! assistant interaction (see `workspace/mod.rs` First Contact block).
+//! assistant interaction (see `workspace/mod.rs` bootstrap block).
 //!
 //! # Example
 //!
@@ -23,8 +23,6 @@
 //! ```
 
 mod channels;
-#[cfg(any(feature = "postgres", feature = "libsql"))]
-pub mod onboarding_chat;
 pub mod profile_evolution;
 mod prompts;
 #[cfg(any(feature = "postgres", feature = "libsql"))]
