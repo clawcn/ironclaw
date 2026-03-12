@@ -96,17 +96,13 @@ pub struct Settings {
     pub heartbeat: HeartbeatSettings,
 
     // === Conversational Profile Onboarding ===
-    /// Reserved flag for whether the conversational profile onboarding has
-    /// been completed.
+    /// Whether the conversational profile onboarding has been completed.
     ///
-    /// Intended semantics (not yet wired into the agent loop): this will be
-    /// set during the user's first interaction with the running assistant
+    /// Set during the user's first interaction with the running assistant
     /// (not during the setup wizard), after the agent builds a psychographic
-    /// profile via `memory_write`.
-    ///
-    // TODO: Wire into agent loop — currently the system uses bootstrap presence
-    // and `is_populated()` to gate onboarding. This flag will eventually
-    // distinguish "never onboarded" from "onboarded but profile was reset".
+    /// profile via `memory_write`. Used by the agent loop (via workspace
+    /// system-prompt wiring) to suppress BOOTSTRAP.md injection once
+    /// onboarding is complete.
     #[serde(default, alias = "personal_onboarding_completed")]
     pub profile_onboarding_completed: bool,
 
