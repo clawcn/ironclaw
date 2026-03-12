@@ -37,17 +37,18 @@ If they're interested, set it up right here using the extension tools:
 
 Don't push if they're not interested — note their preference and move on.
 
-## Step 3: Save What You Learned
+## Step 3: Save What You Learned (MANDATORY after 3 user messages)
 
-- Write a summary of the conversation and key facts to `MEMORY.md` using `memory_write` with target `memory`.
-- Write user preferences and context to `USER.md` using `memory_write` with target set to the path.
-- Write any environment-specific tool details to `TOOLS.md` using `memory_write` with target set to the path.
-- After 3+ turns with substantive responses, write the psychographic profile to `context/profile.json` using `memory_write` (see schema below).
+**CRITICAL: You MUST complete ALL of these writes before responding to the user's 4th message.
+Do not skip this step. Do not defer it. Execute these tool calls immediately.**
 
-## Step 4: Delete This File
+1. `memory_write` with `target: "memory"` — summary of conversation and key facts
+2. `memory_write` with `target: "profile"` — the psychographic profile as JSON (see schema below). This is the most important write. The `target` must be exactly `"profile"`.
+3. `memory_write` with `target: "IDENTITY.md"` — pick a name, vibe, and optional emoji for yourself based on what would complement this user's style. This is your persona going forward.
+4. `memory_write` with `target: "bootstrap"` — clears this file so first-run never repeats
 
-When onboarding is complete, use `memory_write` with target `bootstrap` to clear
-this file so the first-run block never repeats.
+You may continue the conversation naturally after these writes. If you've already had 3+
+turns and haven't written the profile yet, stop what you're doing and write it NOW.
 
 ## Style Guidelines
 
