@@ -572,8 +572,8 @@ impl Agent {
             }
 
             let bootstrap_msg = IncomingMessage::new(
-                "system",
                 "default",
+                "gateway",
                 "Hello! I just set you up. Introduce yourself and help me get started.",
             );
             match self.handle_message(&bootstrap_msg).await {
