@@ -3687,12 +3687,12 @@ mod tests {
     fn test_wizard_owner_id_uses_toml_scope() {
         let _guard = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let _owner = EnvGuard::clear("IRONCLAW_OWNER_ID");
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // safety: test-only tempdir setup
         let path = dir.path().join("config.toml");
-        std::fs::write(&path, "owner_id = \"toml-owner\"\n").unwrap();
+        std::fs::write(&path, "owner_id = \"toml-owner\"\n").unwrap(); // safety: test-only fixture write
 
         let wizard = SetupWizard::try_with_config_and_toml(Default::default(), Some(&path))
-            .expect("wizard should load owner_id from TOML");
+            .expect("wizard should load owner_id from TOML"); // safety: test-only assertion
         assert_eq!(wizard.owner_id(), "toml-owner"); // safety: test-only assertion
     }
 
@@ -3741,12 +3741,12 @@ mod tests {
             return;
         }
 
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // safety: test-only tempdir setup
         let installed = HashSet::<String>::new();
 
         install_missing_bundled_channels(dir.path(), &installed)
             .await
-            .unwrap();
+            .unwrap(); // safety: test-only assertion
 
         assert!(dir.path().join("telegram.wasm").exists());
         assert!(dir.path().join("telegram.capabilities.json").exists());
@@ -3848,7 +3848,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_wasm_channels_empty_dir() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().unwrap(); // safety: test-only tempdir setup
         let channels = discover_wasm_channels(dir.path()).await;
         assert!(channels.is_empty());
     }
