@@ -1362,6 +1362,25 @@ mod tests {
     use super::*;
     use crate::tools::validate_tool_schema;
 
+    fn expect_ok<T, E: std::fmt::Debug>(result: Result<T, E>, message: &str) -> T {
+        result.expect(message) // safety: test-only assertion in #[cfg(test)] module
+    }
+
+    fn expect_some<T>(value: Option<T>, message: &str) -> T {
+        value.expect(message) // safety: test-only assertion in #[cfg(test)] module
+    }
+
+    fn assert_true(condition: bool, message: &str) {
+        assert!(condition, "{message}"); // safety: test-only assertion in #[cfg(test)] module
+    }
+
+    fn assert_equal<T>(left: T, right: T)
+    where
+        T: PartialEq + std::fmt::Debug,
+    {
+        assert_eq!(left, right); // safety: test-only assertion in #[cfg(test)] module
+    }
+
     fn schema_property<'a>(schema: &'a Value, name: &str) -> &'a Value {
         schema
             .get("properties")
@@ -1395,17 +1414,23 @@ mod tests {
             }
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse grouped manual request");
+        let parsed = expect_ok(
+            parse_routine_create_request(&params),
+            "parse grouped manual request",
+        );
 
-        assert_eq!(parsed.name, "manual-check");
-        assert_eq!(parsed.prompt, "Inspect the repo for issues.");
-        assert!(matches!(parsed.trigger, NormalizedTriggerRequest::Manual));
-        assert!(matches!(
-            parsed.execution.mode,
-            NormalizedExecutionMode::Lightweight
-        ));
-        assert_eq!(parsed.cooldown_secs, 300);
-        assert_eq!(parsed.delivery.user, "default");
+        assert_equal(parsed.name.as_str(), "manual-check");
+        assert_equal(parsed.prompt.as_str(), "Inspect the repo for issues.");
+        assert_true(
+            matches!(parsed.trigger, NormalizedTriggerRequest::Manual),
+            "expected manual trigger",
+        );
+        assert_true(
+            matches!(parsed.execution.mode, NormalizedExecutionMode::Lightweight),
+            "expected lightweight execution mode",
+        );
+        assert_equal(parsed.cooldown_secs, 300);
+        assert_equal(parsed.delivery.user.as_str(), "default");
     }
 
     #[test]
@@ -1431,24 +1456,30 @@ mod tests {
             }
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse grouped cron request");
-
-        assert!(matches!(
-            parsed.trigger,
-            NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
-            if schedule == "0 0 9 * * MON-FRI" && timezone.as_deref() == Some("UTC")
-        ));
-        assert!(matches!(
-            parsed.execution.mode,
-            NormalizedExecutionMode::FullJob
-        ));
-        assert_eq!(
-            parsed.execution.tool_permissions,
-            vec!["message".to_string(), "http".to_string()]
+        let parsed = expect_ok(
+            parse_routine_create_request(&params),
+            "parse grouped cron request",
         );
-        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram"));
-        assert_eq!(parsed.delivery.user, "ops-team");
-        assert_eq!(parsed.cooldown_secs, 30);
+
+        assert_true(
+            matches!(
+                parsed.trigger,
+                NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
+                if schedule == "0 0 9 * * MON-FRI" && timezone.as_deref() == Some("UTC")
+            ),
+            "expected grouped cron trigger",
+        );
+        assert_true(
+            matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
+            "expected full_job execution mode",
+        );
+        assert_equal(
+            parsed.execution.tool_permissions,
+            vec!["message".to_string(), "http".to_string()],
+        );
+        assert_equal(parsed.delivery.channel.as_deref(), Some("telegram"));
+        assert_equal(parsed.delivery.user.as_str(), "ops-team");
+        assert_equal(parsed.cooldown_secs, 30);
     }
 
     #[test]
@@ -1468,19 +1499,24 @@ mod tests {
             }
         });
 
-        let parsed =
-            parse_routine_create_request(&params).expect("parse grouped message event request");
+        let parsed = expect_ok(
+            parse_routine_create_request(&params),
+            "parse grouped message event request",
+        );
 
-        assert!(matches!(
-            parsed.trigger,
-            NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
-            if pattern == "deploy\\s+prod" && channel.as_deref() == Some("slack")
-        ));
-        assert!(parsed.execution.use_tools);
-        assert_eq!(parsed.execution.max_tool_rounds, 5);
-        assert_eq!(
+        assert_true(
+            matches!(
+                parsed.trigger,
+                NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
+                if pattern == "deploy\\s+prod" && channel.as_deref() == Some("slack")
+            ),
+            "expected grouped message_event trigger",
+        );
+        assert_true(parsed.execution.use_tools, "expected use_tools=true");
+        assert_equal(parsed.execution.max_tool_rounds, 5);
+        assert_equal(
             parsed.execution.context_paths,
-            vec!["context/deploy.md".to_string()]
+            vec!["context/deploy.md".to_string()],
         );
     }
 
@@ -1504,18 +1540,23 @@ mod tests {
             }
         });
 
-        let parsed =
-            parse_routine_create_request(&params).expect("parse grouped system event request");
+        let parsed = expect_ok(
+            parse_routine_create_request(&params),
+            "parse grouped system event request",
+        );
 
-        assert!(matches!(
-            parsed.trigger,
-            NormalizedTriggerRequest::SystemEvent { ref source, ref event_type, ref filters }
-            if source == "github"
-                && event_type == "issue.opened"
-                && filters.get("repository") == Some(&"nearai/ironclaw".to_string())
-                && filters.get("public") == Some(&"true".to_string())
-                && filters.get("issue_number") == Some(&"42".to_string())
-        ));
+        assert_true(
+            matches!(
+                parsed.trigger,
+                NormalizedTriggerRequest::SystemEvent { ref source, ref event_type, ref filters }
+                if source == "github"
+                    && event_type == "issue.opened"
+                    && filters.get("repository") == Some(&"nearai/ironclaw".to_string())
+                    && filters.get("public") == Some(&"true".to_string())
+                    && filters.get("issue_number") == Some(&"42".to_string())
+            ),
+            "expected grouped system_event trigger",
+        );
     }
 
     #[test]
@@ -1532,23 +1573,29 @@ mod tests {
             "notify_user": "123"
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse legacy flat request");
-
-        assert!(matches!(
-            parsed.trigger,
-            NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
-            if pattern == "hello" && channel.as_deref() == Some("telegram")
-        ));
-        assert!(matches!(
-            parsed.execution.mode,
-            NormalizedExecutionMode::FullJob
-        ));
-        assert_eq!(
-            parsed.execution.tool_permissions,
-            vec!["message".to_string()]
+        let parsed = expect_ok(
+            parse_routine_create_request(&params),
+            "parse legacy flat request",
         );
-        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram"));
-        assert_eq!(parsed.delivery.user, "123");
+
+        assert_true(
+            matches!(
+                parsed.trigger,
+                NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
+                if pattern == "hello" && channel.as_deref() == Some("telegram")
+            ),
+            "expected legacy message_event trigger",
+        );
+        assert_true(
+            matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
+            "expected full_job execution mode",
+        );
+        assert_equal(
+            parsed.execution.tool_permissions,
+            vec!["message".to_string()],
+        );
+        assert_equal(parsed.delivery.channel.as_deref(), Some("telegram"));
+        assert_equal(parsed.delivery.user.as_str(), "123");
     }
 
     #[test]
@@ -1570,15 +1617,18 @@ mod tests {
             }
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse mixed request");
+        let parsed = expect_ok(parse_routine_create_request(&params), "parse mixed request");
 
-        assert!(matches!(
-            parsed.trigger,
-            NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
-            if schedule == "0 0 8 * * *" && timezone.as_deref() == Some("UTC")
-        ));
-        assert_eq!(parsed.delivery.user, "fallback-user");
-        assert_eq!(parsed.cooldown_secs, 45);
+        assert_true(
+            matches!(
+                parsed.trigger,
+                NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
+                if schedule == "0 0 8 * * *" && timezone.as_deref() == Some("UTC")
+            ),
+            "expected mixed cron trigger",
+        );
+        assert_equal(parsed.delivery.user.as_str(), "fallback-user");
+        assert_equal(parsed.cooldown_secs, 45);
     }
 
     #[test]
@@ -1589,12 +1639,14 @@ mod tests {
             "payload": { "issue_number": 7 }
         });
 
-        let (source, event_type, payload) =
-            parse_event_emit_args(&params).expect("parse event_emit source alias");
+        let (source, event_type, payload) = expect_ok(
+            parse_event_emit_args(&params),
+            "parse event_emit source alias",
+        );
 
-        assert_eq!(source, "github");
-        assert_eq!(event_type, "issue.opened");
-        assert_eq!(payload["issue_number"], serde_json::json!(7));
+        assert_equal(source, "github".to_string());
+        assert_equal(event_type, "issue.opened".to_string());
+        assert_equal(payload["issue_number"].clone(), serde_json::json!(7));
     }
 
     #[test]
@@ -1604,27 +1656,29 @@ mod tests {
             "event_type": "issue.opened"
         });
 
-        let (source, event_type, payload) =
-            parse_event_emit_args(&params).expect("parse canonical event_emit args");
+        let (source, event_type, payload) = expect_ok(
+            parse_event_emit_args(&params),
+            "parse canonical event_emit args",
+        );
 
-        assert_eq!(source, "github");
-        assert_eq!(event_type, "issue.opened");
-        assert_eq!(payload, serde_json::json!({}));
+        assert_equal(source, "github".to_string());
+        assert_equal(event_type, "issue.opened".to_string());
+        assert_equal(payload, serde_json::json!({}));
     }
 
     #[test]
     fn routine_create_parameters_schema_prefers_grouped_request_shape() {
         let schema = routine_create_parameters_schema();
         let errors = validate_tool_schema(&schema, "routine_create");
-        assert!(
+        assert_true(
             errors.is_empty(),
-            "schema should validate cleanly: {errors:?}"
+            "routine_create schema should validate cleanly",
         );
 
         let request = schema_property(&schema, "request");
-        assert!(
+        assert_true(
             request.is_object(),
-            "request should be present in compact schema"
+            "request should be present in compact schema",
         );
 
         for legacy_alias in [
@@ -1635,9 +1689,9 @@ mod tests {
             "notify_channel",
             "cooldown_secs",
         ] {
-            assert!(
+            assert_true(
                 maybe_schema_property(&schema, legacy_alias).is_none(),
-                "compact parameters schema should hide legacy alias {legacy_alias}"
+                "compact parameters schema should hide legacy alias",
             );
         }
     }
@@ -1654,9 +1708,9 @@ mod tests {
             "notify_channel",
             "cooldown_secs",
         ] {
-            assert!(
+            assert_true(
                 schema_property(&schema, legacy_alias).is_object(),
-                "discovery schema should retain legacy alias {legacy_alias}"
+                "discovery schema should retain legacy alias",
             );
         }
     }
@@ -1665,38 +1719,58 @@ mod tests {
     fn routine_create_parameters_schema_describes_grouped_trigger_fields() {
         let schema = routine_create_parameters_schema();
 
-        let request_description = schema_property(&schema, "request")
-            .get("description")
-            .and_then(Value::as_str)
-            .expect("request description");
-        assert!(request_description.contains("Set request.kind first"));
+        let request_description = expect_some(
+            schema_property(&schema, "request")
+                .get("description")
+                .and_then(Value::as_str),
+            "request description",
+        );
+        assert_true(
+            request_description.contains("Set request.kind first"),
+            "request description should mention kind-first guidance",
+        );
 
-        let pattern_description = nested_schema_property(&schema, "request", "pattern")
-            .get("description")
-            .and_then(Value::as_str)
-            .expect("request.pattern description");
-        assert!(pattern_description.contains("message_event"));
+        let pattern_description = expect_some(
+            nested_schema_property(&schema, "request", "pattern")
+                .get("description")
+                .and_then(Value::as_str),
+            "request.pattern description",
+        );
+        assert_true(
+            pattern_description.contains("message_event"),
+            "pattern description should mention message_event",
+        );
 
-        let source_description = nested_schema_property(&schema, "request", "source")
-            .get("description")
-            .and_then(Value::as_str)
-            .expect("request.source description");
-        assert!(source_description.contains("system_event"));
+        let source_description = expect_some(
+            nested_schema_property(&schema, "request", "source")
+                .get("description")
+                .and_then(Value::as_str),
+            "request.source description",
+        );
+        assert_true(
+            source_description.contains("system_event"),
+            "source description should mention system_event",
+        );
 
-        let filters_description = nested_schema_property(&schema, "request", "filters")
-            .get("description")
-            .and_then(Value::as_str)
-            .expect("request.filters description");
-        assert!(filters_description.contains("top-level string, number, and boolean"));
+        let filters_description = expect_some(
+            nested_schema_property(&schema, "request", "filters")
+                .get("description")
+                .and_then(Value::as_str),
+            "request.filters description",
+        );
+        assert_true(
+            filters_description.contains("top-level string, number, and boolean"),
+            "filters description should mention supported scalar payload types",
+        );
     }
 
     #[test]
     fn routine_update_schema_exposes_supported_fields_and_limits() {
         let schema = routine_update_parameters_schema();
         let errors = validate_tool_schema(&schema, "routine_update");
-        assert!(
+        assert_true(
             errors.is_empty(),
-            "routine_update schema should validate cleanly: {errors:?}"
+            "routine_update schema should validate cleanly",
         );
 
         for field in [
@@ -1710,38 +1784,54 @@ mod tests {
             let _ = schema_property(&schema, field);
         }
 
-        let schedule_description = schema_property(&schema, "schedule")
-            .get("description")
-            .and_then(Value::as_str)
-            .expect("schedule description");
-        assert!(schedule_description.contains("cron triggers"));
+        let schedule_description = expect_some(
+            schema_property(&schema, "schedule")
+                .get("description")
+                .and_then(Value::as_str),
+            "schedule description",
+        );
+        assert_true(
+            schedule_description.contains("cron triggers"),
+            "schedule description should mention cron triggers",
+        );
 
-        let timezone_description = schema_property(&schema, "timezone")
-            .get("description")
-            .and_then(Value::as_str)
-            .expect("timezone description");
-        assert!(timezone_description.contains("cron triggers"));
+        let timezone_description = expect_some(
+            schema_property(&schema, "timezone")
+                .get("description")
+                .and_then(Value::as_str),
+            "timezone description",
+        );
+        assert_true(
+            timezone_description.contains("cron triggers"),
+            "timezone description should mention cron triggers",
+        );
     }
 
     #[test]
     fn event_emit_parameters_schema_prefers_canonical_event_source() {
         let schema = event_emit_parameters_schema();
         let errors = validate_tool_schema(&schema, "event_emit");
-        assert!(
+        assert_true(
             errors.is_empty(),
-            "schema should validate cleanly: {errors:?}"
+            "event_emit schema should validate cleanly",
         );
 
-        assert!(schema_property(&schema, "event_source").is_object());
-        assert!(
+        assert_true(
+            schema_property(&schema, "event_source").is_object(),
+            "event_emit parameters schema should expose event_source",
+        );
+        assert_true(
             maybe_schema_property(&schema, "source").is_none(),
-            "compact parameters schema should hide source alias"
+            "event_emit parameters schema should hide source alias",
         );
     }
 
     #[test]
     fn event_emit_discovery_schema_keeps_source_alias() {
         let schema = event_emit_discovery_schema();
-        assert!(schema_property(&schema, "source").is_object());
+        assert_true(
+            schema_property(&schema, "source").is_object(),
+            "event_emit discovery schema should keep source alias",
+        );
     }
 }
