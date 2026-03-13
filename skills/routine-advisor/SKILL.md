@@ -78,11 +78,11 @@ Use the `routine_create` tool. Before creating, check `routine_list` to avoid du
 Parameters:
 - `trigger_type`: Usually "cron" for scheduled tasks
 - `schedule`: Standard cron format. Common schedules:
-  - Daily 9am: `0 0 9 * * *`
-  - Weekday mornings: `0 0 9 * * MON-FRI`
-  - Weekly Monday: `0 0 9 * * MON`
-  - Every 2 hours during work: `0 0 9-17/2 * * MON-FRI`
-  - Sunday evening: `0 0 18 * * SUN`
+  - Daily 9am: `0 9 * * *`
+  - Weekday mornings: `0 9 * * MON-FRI`
+  - Weekly Monday: `0 9 * * MON`
+  - Every 2 hours during work: `0 9-17/2 * * MON-FRI`
+  - Sunday evening: `0 18 * * SUN`
 - `action_type`: "lightweight" for simple checks, "full_job" for multi-step tasks
 - `prompt`: Clear, specific instruction for what the routine should do
 - `context_paths`: Workspace files to load as context (e.g., `["context/profile.json", "MEMORY.md"]`)

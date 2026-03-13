@@ -113,7 +113,13 @@ impl Tool for MemorySearchTool {
 
 /// Identity files that are injected into every system prompt.
 /// Writes to these files are scanned for prompt injection patterns.
-const IDENTITY_FILES: &[&str] = &[paths::SOUL, paths::AGENTS, paths::USER, paths::IDENTITY];
+const IDENTITY_FILES: &[&str] = &[
+    paths::SOUL,
+    paths::AGENTS,
+    paths::USER,
+    paths::IDENTITY,
+    paths::ASSISTANT_DIRECTIVES,
+];
 
 /// Tool for writing to workspace memory.
 ///

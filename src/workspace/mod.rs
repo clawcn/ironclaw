@@ -832,19 +832,44 @@ impl Workspace {
             return Ok(false);
         }
 
+        // Scan derived content for prompt injection before writing to
+        // system-prompt-injected files.  Profile fields are populated by the
+        // LLM from user conversation, so they could contain injection payloads.
+        let sanitizer = crate::safety::Sanitizer::new();
+
         // Merge profile content into USER.md, preserving any user-written sections.
         let new_profile_content = profile.to_user_md();
         let merged = match self.read(paths::USER).await {
             Ok(existing) => merge_profile_section(&existing.content, &new_profile_content),
             Err(_) => wrap_profile_section(&new_profile_content),
         };
+
+        let user_warnings = sanitizer.detect(&merged);
+        if user_warnings
+            .iter()
+            .any(|w| w.severity >= crate::safety::Severity::High)
+        {
+            tracing::warn!(
+                target: "ironclaw::safety",
+                "sync_profile_documents: rejecting USER.md write due to injection patterns"
+            );
+            return Ok(false);
+        }
         self.write(paths::USER, &merged).await?;
 
-        self.write(
-            paths::ASSISTANT_DIRECTIVES,
-            &profile.to_assistant_directives(),
-        )
-        .await?;
+        let directives = profile.to_assistant_directives();
+        let dir_warnings = sanitizer.detect(&directives);
+        if dir_warnings
+            .iter()
+            .any(|w| w.severity >= crate::safety::Severity::High)
+        {
+            tracing::warn!(
+                target: "ironclaw::safety",
+                "sync_profile_documents: rejecting assistant-directives write due to injection patterns"
+            );
+            return Ok(false);
+        }
+        self.write(paths::ASSISTANT_DIRECTIVES, &directives).await?;
 
         // Seed HEARTBEAT.md only if it doesn't exist yet (don't clobber user customizations).
         if self.read(paths::HEARTBEAT).await.is_err() {

@@ -43,7 +43,7 @@ Don't push if they're not interested — note their preference and move on.
 Do not skip this step. Do not defer it. Execute these tool calls immediately.**
 
 1. `memory_write` with `target: "memory"` — summary of conversation and key facts
-2. `memory_write` with `target: "profile"` — the psychographic profile as JSON (see schema below). This is the most important write. The `target` must be exactly `"profile"`.
+2. `memory_write` with `target: "context/profile.json"` — the psychographic profile as JSON (see schema below). This is the most important write. The `target` must be exactly `"context/profile.json"`.
 3. `memory_write` with `target: "IDENTITY.md"` — pick a name, vibe, and optional emoji for yourself based on what would complement this user's style. This is your persona going forward.
 4. `memory_write` with `target: "bootstrap"` — clears this file so first-run never repeats
 
