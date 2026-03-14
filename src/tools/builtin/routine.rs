@@ -1454,10 +1454,12 @@ mod tests {
         assert_eq!(parsed.name.as_str(), "manual-check"); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(parsed.prompt.as_str(), "Inspect the repo for issues."); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(parsed.trigger, NormalizedTriggerRequest::Manual),
             "expected manual trigger",
         ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(parsed.execution.mode, NormalizedExecutionMode::Lightweight),
             "expected lightweight execution mode",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1491,6 +1493,7 @@ mod tests {
         let parsed = parse_routine_create_request(&params).expect("parse grouped cron request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
@@ -1499,10 +1502,12 @@ mod tests {
             "expected grouped cron trigger",
         ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
             "expected full_job execution mode",
         ); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(
+            // safety: test-only assertion in #[cfg(test)] module
             parsed.execution.tool_permissions,
             vec!["message".to_string(), "http".to_string()],
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1532,6 +1537,7 @@ mod tests {
             parse_routine_create_request(&params).expect("parse grouped message event request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
@@ -1542,6 +1548,7 @@ mod tests {
         assert!(parsed.execution.use_tools, "expected use_tools=true"); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(parsed.execution.max_tool_rounds, 5); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(
+            // safety: test-only assertion in #[cfg(test)] module
             parsed.execution.context_paths,
             vec!["context/deploy.md".to_string()],
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1571,6 +1578,7 @@ mod tests {
             parse_routine_create_request(&params).expect("parse grouped system event request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::SystemEvent { ref source, ref event_type, ref filters }
@@ -1607,6 +1615,7 @@ mod tests {
         match err {
             ToolError::InvalidParameters(message) => {
                 assert!(
+                    // safety: test-only assertion in #[cfg(test)] module
                     message.contains(
                         "system_event filters only support string, number, and boolean values",
                     ),
@@ -1634,6 +1643,7 @@ mod tests {
         let parsed = parse_routine_create_request(&params).expect("parse legacy flat request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
@@ -1642,10 +1652,12 @@ mod tests {
             "expected legacy message_event trigger",
         ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
             "expected full_job execution mode",
         ); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(
+            // safety: test-only assertion in #[cfg(test)] module
             parsed.execution.tool_permissions,
             vec!["message".to_string()],
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1675,6 +1687,7 @@ mod tests {
         let parsed = parse_routine_create_request(&params).expect("parse mixed request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
@@ -1722,12 +1735,14 @@ mod tests {
         let schema = routine_create_parameters_schema();
         let errors = validate_tool_schema(&schema, "routine_create");
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             errors.is_empty(),
             "routine_create schema should validate cleanly",
         ); // safety: test-only assertion in #[cfg(test)] module
 
         let request = schema_property(&schema, "request");
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             request.is_object(),
             "request should be present in compact schema",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1736,12 +1751,14 @@ mod tests {
             .and_then(Value::as_array)
             .expect("routine_create required list"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             required.contains(&Value::String("request".to_string())),
             "compact parameters schema should require request",
         ); // safety: test-only assertion in #[cfg(test)] module
 
         for legacy_alias in ROUTINE_CREATE_LEGACY_ALIASES {
             assert!(
+                // safety: test-only assertion in #[cfg(test)] module
                 maybe_schema_property(&schema, legacy_alias).is_none(),
                 "compact parameters schema should hide legacy alias",
             ); // safety: test-only assertion in #[cfg(test)] module
@@ -1759,6 +1776,7 @@ mod tests {
 
         for legacy_alias in ROUTINE_CREATE_LEGACY_ALIASES {
             assert!(
+                // safety: test-only assertion in #[cfg(test)] module
                 schema_property(&schema, legacy_alias).is_object(),
                 "discovery schema should retain legacy alias",
             ); // safety: test-only assertion in #[cfg(test)] module
@@ -1774,6 +1792,7 @@ mod tests {
             .and_then(Value::as_str)
             .expect("request description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             request_description.contains("Set request.kind first"),
             "request description should mention kind-first guidance",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1783,6 +1802,7 @@ mod tests {
             .and_then(Value::as_str)
             .expect("request.pattern description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             pattern_description.contains("message_event"),
             "pattern description should mention message_event",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1792,6 +1812,7 @@ mod tests {
             .and_then(Value::as_str)
             .expect("request.source description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             source_description.contains("system_event"),
             "source description should mention system_event",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1801,6 +1822,7 @@ mod tests {
             .and_then(Value::as_str)
             .expect("request.filters description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             filters_description.contains("top-level string, number, and boolean"),
             "filters description should mention supported scalar payload types",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1814,6 +1836,7 @@ mod tests {
             .and_then(Value::as_array)
             .expect("request.filters additionalProperties.type"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             allowed_types.contains(&Value::String("string".to_string()))
                 && allowed_types.contains(&Value::String("number".to_string()))
                 && allowed_types.contains(&Value::String("boolean".to_string())),
@@ -1826,6 +1849,7 @@ mod tests {
         let schema = routine_update_parameters_schema();
         let errors = validate_tool_schema(&schema, "routine_update");
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             errors.is_empty(),
             "routine_update schema should validate cleanly",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1846,6 +1870,7 @@ mod tests {
             .and_then(Value::as_str)
             .expect("schedule description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             schedule_description.contains("cron triggers"),
             "schedule description should mention cron triggers",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1855,6 +1880,7 @@ mod tests {
             .and_then(Value::as_str)
             .expect("timezone description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             timezone_description.contains("cron triggers"),
             "timezone description should mention cron triggers",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1865,11 +1891,13 @@ mod tests {
         let schema = event_emit_parameters_schema();
         let errors = validate_tool_schema(&schema, "event_emit");
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             errors.is_empty(),
             "event_emit schema should validate cleanly",
         ); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             schema_property(&schema, "event_source").is_object(),
             "event_emit parameters schema should expose event_source",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1878,10 +1906,12 @@ mod tests {
             .and_then(Value::as_array)
             .expect("event_emit required list"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             required.contains(&Value::String("event_source".to_string())),
             "event_emit parameters schema should require event_source",
         ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             maybe_schema_property(&schema, "source").is_none(),
             "event_emit parameters schema should hide source alias",
         ); // safety: test-only assertion in #[cfg(test)] module
@@ -1896,6 +1926,7 @@ mod tests {
             .expect("event_emit discovery anyOf"); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(any_of.len(), 2usize); // safety: test-only assertion in #[cfg(test)] module
         assert!(
+            // safety: test-only assertion in #[cfg(test)] module
             schema_property(&schema, "source").is_object(),
             "event_emit discovery schema should keep source alias",
         ); // safety: test-only assertion in #[cfg(test)] module
