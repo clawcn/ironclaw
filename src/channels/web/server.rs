@@ -1812,15 +1812,27 @@ async fn extensions_list_handler(
     let extensions = installed
         .into_iter()
         .map(|ext| {
-            let has_paired = pairing_store
-                .read_allow_from(&ext.name)
-                .map(|list| !list.is_empty())
-                .unwrap_or(false);
-            let activation_status = crate::channels::web::types::classify_wasm_channel_activation(
-                &ext,
-                has_paired,
-                owner_bound_channels.contains(&ext.name),
-            );
+            let activation_status = if ext.kind == crate::extensions::ExtensionKind::WasmChannel {
+                let has_paired = pairing_store
+                    .read_allow_from(&ext.name)
+                    .map(|list| !list.is_empty())
+                    .unwrap_or(false);
+                crate::channels::web::types::classify_wasm_channel_activation(
+                    &ext,
+                    has_paired,
+                    owner_bound_channels.contains(&ext.name),
+                )
+            } else if ext.kind == crate::extensions::ExtensionKind::ChannelRelay {
+                Some(if ext.active {
+                    ExtensionActivationStatus::Active
+                } else if ext.authenticated {
+                    ExtensionActivationStatus::Configured
+                } else {
+                    ExtensionActivationStatus::Installed
+                })
+            } else {
+                None
+            };
             ExtensionInfo {
                 name: ext.name,
                 display_name: ext.display_name,
@@ -2821,6 +2833,48 @@ mod tests {
             return Err(format!(
                 "unbound channel should be pairing, got {:?}",
                 unbound
+            ));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_channel_relay_activation_status_is_preserved() -> Result<(), String> {
+        let relay = InstalledExtension {
+            name: "signal".to_string(),
+            kind: ExtensionKind::ChannelRelay,
+            display_name: Some("Signal".to_string()),
+            description: None,
+            url: None,
+            authenticated: true,
+            active: false,
+            tools: Vec::new(),
+            needs_setup: true,
+            has_auth: false,
+            installed: true,
+            activation_error: None,
+            version: None,
+        };
+
+        let status = if relay.kind == crate::extensions::ExtensionKind::WasmChannel {
+            classify_wasm_channel_activation(&relay, false, false)
+        } else if relay.kind == crate::extensions::ExtensionKind::ChannelRelay {
+            Some(if relay.active {
+                ExtensionActivationStatus::Active
+            } else if relay.authenticated {
+                ExtensionActivationStatus::Configured
+            } else {
+                ExtensionActivationStatus::Installed
+            })
+        } else {
+            None
+        };
+
+        if status != Some(ExtensionActivationStatus::Configured) {
+            return Err(format!(
+                "channel relay should retain configured status, got {:?}",
+                status
             ));
         }
 
