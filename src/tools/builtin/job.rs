@@ -1384,6 +1384,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_sandbox_without_job_manager_returns_error() {
+        let manager = Arc::new(ContextManager::new(5));
+        // Create tool without sandbox deps — job_manager is None.
+        let tool = CreateJobTool::new(manager);
+        assert!(!tool.sandbox_enabled());
+
+        let result = tool
+            .execute_sandbox(
+                "test task",
+                None,
+                false,
+                JobMode::Worker,
+                vec![],
+                &JobContext::default(),
+            )
+            .await;
+
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, ToolError::ExecutionFailed(_)),
+            "expected ExecutionFailed, got: {err:?}"
+        );
+    }
+
+    #[tokio::test]
     async fn test_list_jobs_tool() {
         let manager = Arc::new(ContextManager::new(5));
 

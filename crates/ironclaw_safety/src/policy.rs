@@ -275,4 +275,29 @@ mod tests {
         assert!(Severity::High > Severity::Medium);
         assert!(Severity::Medium > Severity::Low);
     }
+
+    #[test]
+    fn test_new_returns_error_on_invalid_regex() {
+        let result = PolicyRule::new(
+            "bad_rule",
+            "Invalid regex",
+            r"[invalid((",
+            Severity::High,
+            PolicyAction::Block,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_new_returns_ok_on_valid_regex() {
+        let result = PolicyRule::new(
+            "good_rule",
+            "Valid regex",
+            r"hello\s+world",
+            Severity::Low,
+            PolicyAction::Warn,
+        );
+        assert!(result.is_ok());
+        assert!(result.unwrap().matches("hello  world"));
+    }
 }
