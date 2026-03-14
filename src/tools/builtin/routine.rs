@@ -1397,31 +1397,24 @@ mod tests {
     use super::*;
     use crate::tools::validate_tool_schema;
 
-    fn expect_ok<T, E: std::fmt::Debug>(result: Result<T, E>, message: &str) -> T {
-        result.expect(message) // safety: test-only assertion in #[cfg(test)] module
-    }
-
-    fn expect_some<T>(value: Option<T>, message: &str) -> T {
-        value.expect(message) // safety: test-only assertion in #[cfg(test)] module
-    }
-
-    fn expect_err<T: std::fmt::Debug, E: std::fmt::Debug>(
-        result: Result<T, E>,
-        message: &str,
-    ) -> E {
-        result.expect_err(message) // safety: test-only assertion in #[cfg(test)] module
-    }
-
-    fn assert_true(condition: bool, message: &str) {
-        assert!(condition, "{message}"); // safety: test-only assertion in #[cfg(test)] module
-    }
-
-    fn assert_equal<T>(left: T, right: T)
-    where
-        T: PartialEq + std::fmt::Debug,
-    {
-        assert_eq!(left, right); // safety: test-only assertion in #[cfg(test)] module
-    }
+    const ROUTINE_CREATE_LEGACY_ALIASES: &[&str] = &[
+        "trigger_type",
+        "schedule",
+        "timezone",
+        "event_pattern",
+        "event_channel",
+        "event_source",
+        "event_type",
+        "event_filters",
+        "action_type",
+        "context_paths",
+        "use_tools",
+        "max_tool_rounds",
+        "tool_permissions",
+        "notify_channel",
+        "notify_user",
+        "cooldown_secs",
+    ];
 
     fn schema_property<'a>(schema: &'a Value, name: &str) -> &'a Value {
         schema
@@ -1456,23 +1449,20 @@ mod tests {
             }
         });
 
-        let parsed = expect_ok(
-            parse_routine_create_request(&params),
-            "parse grouped manual request",
-        );
+        let parsed = parse_routine_create_request(&params).expect("parse grouped manual request");
 
-        assert_equal(parsed.name.as_str(), "manual-check");
-        assert_equal(parsed.prompt.as_str(), "Inspect the repo for issues.");
-        assert_true(
+        assert_eq!(parsed.name.as_str(), "manual-check");
+        assert_eq!(parsed.prompt.as_str(), "Inspect the repo for issues.");
+        assert!(
             matches!(parsed.trigger, NormalizedTriggerRequest::Manual),
             "expected manual trigger",
         );
-        assert_true(
+        assert!(
             matches!(parsed.execution.mode, NormalizedExecutionMode::Lightweight),
             "expected lightweight execution mode",
         );
-        assert_equal(parsed.cooldown_secs, 300);
-        assert_equal(parsed.delivery.user.as_str(), "default");
+        assert_eq!(parsed.cooldown_secs, 300);
+        assert_eq!(parsed.delivery.user.as_str(), "default");
     }
 
     #[test]
@@ -1498,12 +1488,9 @@ mod tests {
             }
         });
 
-        let parsed = expect_ok(
-            parse_routine_create_request(&params),
-            "parse grouped cron request",
-        );
+        let parsed = parse_routine_create_request(&params).expect("parse grouped cron request");
 
-        assert_true(
+        assert!(
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
@@ -1511,17 +1498,17 @@ mod tests {
             ),
             "expected grouped cron trigger",
         );
-        assert_true(
+        assert!(
             matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
             "expected full_job execution mode",
         );
-        assert_equal(
+        assert_eq!(
             parsed.execution.tool_permissions,
             vec!["message".to_string(), "http".to_string()],
         );
-        assert_equal(parsed.delivery.channel.as_deref(), Some("telegram"));
-        assert_equal(parsed.delivery.user.as_str(), "ops-team");
-        assert_equal(parsed.cooldown_secs, 30);
+        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram"));
+        assert_eq!(parsed.delivery.user.as_str(), "ops-team");
+        assert_eq!(parsed.cooldown_secs, 30);
     }
 
     #[test]
@@ -1541,12 +1528,10 @@ mod tests {
             }
         });
 
-        let parsed = expect_ok(
-            parse_routine_create_request(&params),
-            "parse grouped message event request",
-        );
+        let parsed =
+            parse_routine_create_request(&params).expect("parse grouped message event request");
 
-        assert_true(
+        assert!(
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
@@ -1554,9 +1539,9 @@ mod tests {
             ),
             "expected grouped message_event trigger",
         );
-        assert_true(parsed.execution.use_tools, "expected use_tools=true");
-        assert_equal(parsed.execution.max_tool_rounds, 5);
-        assert_equal(
+        assert!(parsed.execution.use_tools, "expected use_tools=true");
+        assert_eq!(parsed.execution.max_tool_rounds, 5);
+        assert_eq!(
             parsed.execution.context_paths,
             vec!["context/deploy.md".to_string()],
         );
@@ -1582,12 +1567,10 @@ mod tests {
             }
         });
 
-        let parsed = expect_ok(
-            parse_routine_create_request(&params),
-            "parse grouped system event request",
-        );
+        let parsed =
+            parse_routine_create_request(&params).expect("parse grouped system event request");
 
-        assert_true(
+        assert!(
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::SystemEvent { ref source, ref event_type, ref filters }
@@ -1619,17 +1602,17 @@ mod tests {
             }
         });
 
-        let err = expect_err(
-            parse_routine_create_request(&params),
-            "reject nested system event filter values",
-        );
+        let err = parse_routine_create_request(&params)
+            .expect_err("reject nested system event filter values");
         match err {
-            ToolError::InvalidParameters(message) => assert_true(
-                message.contains(
-                    "system_event filters only support string, number, and boolean values",
-                ),
-                &format!("unexpected invalid filter error: {message}"),
-            ),
+            ToolError::InvalidParameters(message) => {
+                assert!(
+                    message.contains(
+                        "system_event filters only support string, number, and boolean values",
+                    ),
+                    "unexpected invalid filter error: {message}",
+                )
+            }
             other => panic!("expected InvalidParameters, got {other:?}"),
         }
     }
@@ -1648,12 +1631,9 @@ mod tests {
             "notify_user": "123"
         });
 
-        let parsed = expect_ok(
-            parse_routine_create_request(&params),
-            "parse legacy flat request",
-        );
+        let parsed = parse_routine_create_request(&params).expect("parse legacy flat request");
 
-        assert_true(
+        assert!(
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::MessageEvent { ref pattern, ref channel }
@@ -1661,16 +1641,16 @@ mod tests {
             ),
             "expected legacy message_event trigger",
         );
-        assert_true(
+        assert!(
             matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
             "expected full_job execution mode",
         );
-        assert_equal(
+        assert_eq!(
             parsed.execution.tool_permissions,
             vec!["message".to_string()],
         );
-        assert_equal(parsed.delivery.channel.as_deref(), Some("telegram"));
-        assert_equal(parsed.delivery.user.as_str(), "123");
+        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram"));
+        assert_eq!(parsed.delivery.user.as_str(), "123");
     }
 
     #[test]
@@ -1692,9 +1672,9 @@ mod tests {
             }
         });
 
-        let parsed = expect_ok(parse_routine_create_request(&params), "parse mixed request");
+        let parsed = parse_routine_create_request(&params).expect("parse mixed request");
 
-        assert_true(
+        assert!(
             matches!(
                 parsed.trigger,
                 NormalizedTriggerRequest::Cron { ref schedule, ref timezone }
@@ -1702,8 +1682,8 @@ mod tests {
             ),
             "expected mixed cron trigger",
         );
-        assert_equal(parsed.delivery.user.as_str(), "fallback-user");
-        assert_equal(parsed.cooldown_secs, 45);
+        assert_eq!(parsed.delivery.user.as_str(), "fallback-user");
+        assert_eq!(parsed.cooldown_secs, 45);
     }
 
     #[test]
@@ -1714,14 +1694,12 @@ mod tests {
             "payload": { "issue_number": 7 }
         });
 
-        let (source, event_type, payload) = expect_ok(
-            parse_event_emit_args(&params),
-            "parse event_emit source alias",
-        );
+        let (source, event_type, payload) =
+            parse_event_emit_args(&params).expect("parse event_emit source alias");
 
-        assert_equal(source, "github".to_string());
-        assert_equal(event_type, "issue.opened".to_string());
-        assert_equal(payload["issue_number"].clone(), serde_json::json!(7));
+        assert_eq!(source, "github".to_string());
+        assert_eq!(event_type, "issue.opened".to_string());
+        assert_eq!(payload["issue_number"].clone(), serde_json::json!(7));
     }
 
     #[test]
@@ -1731,48 +1709,39 @@ mod tests {
             "event_type": "issue.opened"
         });
 
-        let (source, event_type, payload) = expect_ok(
-            parse_event_emit_args(&params),
-            "parse canonical event_emit args",
-        );
+        let (source, event_type, payload) =
+            parse_event_emit_args(&params).expect("parse canonical event_emit args");
 
-        assert_equal(source, "github".to_string());
-        assert_equal(event_type, "issue.opened".to_string());
-        assert_equal(payload, serde_json::json!({}));
+        assert_eq!(source, "github".to_string());
+        assert_eq!(event_type, "issue.opened".to_string());
+        assert_eq!(payload, serde_json::json!({}));
     }
 
     #[test]
     fn routine_create_parameters_schema_prefers_grouped_request_shape() {
         let schema = routine_create_parameters_schema();
         let errors = validate_tool_schema(&schema, "routine_create");
-        assert_true(
+        assert!(
             errors.is_empty(),
             "routine_create schema should validate cleanly",
         );
 
         let request = schema_property(&schema, "request");
-        assert_true(
+        assert!(
             request.is_object(),
             "request should be present in compact schema",
         );
-        let required = expect_some(
-            schema.get("required").and_then(Value::as_array),
-            "routine_create required list",
-        );
-        assert_true(
+        let required = schema
+            .get("required")
+            .and_then(Value::as_array)
+            .expect("routine_create required list");
+        assert!(
             required.contains(&Value::String("request".to_string())),
             "compact parameters schema should require request",
         );
 
-        for legacy_alias in [
-            "trigger_type",
-            "event_pattern",
-            "event_source",
-            "action_type",
-            "notify_channel",
-            "cooldown_secs",
-        ] {
-            assert_true(
+        for legacy_alias in ROUTINE_CREATE_LEGACY_ALIASES {
+            assert!(
                 maybe_schema_property(&schema, legacy_alias).is_none(),
                 "compact parameters schema should hide legacy alias",
             );
@@ -1782,21 +1751,14 @@ mod tests {
     #[test]
     fn routine_create_discovery_schema_keeps_legacy_aliases() {
         let schema = routine_create_discovery_schema();
-        let any_of = expect_some(
-            schema.get("anyOf").and_then(Value::as_array),
-            "routine_create discovery anyOf",
-        );
-        assert_equal(any_of.len(), 2usize);
+        let any_of = schema
+            .get("anyOf")
+            .and_then(Value::as_array)
+            .expect("routine_create discovery anyOf");
+        assert_eq!(any_of.len(), 2usize);
 
-        for legacy_alias in [
-            "trigger_type",
-            "event_pattern",
-            "event_source",
-            "action_type",
-            "notify_channel",
-            "cooldown_secs",
-        ] {
-            assert_true(
+        for legacy_alias in ROUTINE_CREATE_LEGACY_ALIASES {
+            assert!(
                 schema_property(&schema, legacy_alias).is_object(),
                 "discovery schema should retain legacy alias",
             );
@@ -1807,60 +1769,51 @@ mod tests {
     fn routine_create_parameters_schema_describes_grouped_trigger_fields() {
         let schema = routine_create_parameters_schema();
 
-        let request_description = expect_some(
-            schema_property(&schema, "request")
-                .get("description")
-                .and_then(Value::as_str),
-            "request description",
-        );
-        assert_true(
+        let request_description = schema_property(&schema, "request")
+            .get("description")
+            .and_then(Value::as_str)
+            .expect("request description");
+        assert!(
             request_description.contains("Set request.kind first"),
             "request description should mention kind-first guidance",
         );
 
-        let pattern_description = expect_some(
-            nested_schema_property(&schema, "request", "pattern")
-                .get("description")
-                .and_then(Value::as_str),
-            "request.pattern description",
-        );
-        assert_true(
+        let pattern_description = nested_schema_property(&schema, "request", "pattern")
+            .get("description")
+            .and_then(Value::as_str)
+            .expect("request.pattern description");
+        assert!(
             pattern_description.contains("message_event"),
             "pattern description should mention message_event",
         );
 
-        let source_description = expect_some(
-            nested_schema_property(&schema, "request", "source")
-                .get("description")
-                .and_then(Value::as_str),
-            "request.source description",
-        );
-        assert_true(
+        let source_description = nested_schema_property(&schema, "request", "source")
+            .get("description")
+            .and_then(Value::as_str)
+            .expect("request.source description");
+        assert!(
             source_description.contains("system_event"),
             "source description should mention system_event",
         );
 
-        let filters_description = expect_some(
-            nested_schema_property(&schema, "request", "filters")
-                .get("description")
-                .and_then(Value::as_str),
-            "request.filters description",
-        );
-        assert_true(
+        let filters_description = nested_schema_property(&schema, "request", "filters")
+            .get("description")
+            .and_then(Value::as_str)
+            .expect("request.filters description");
+        assert!(
             filters_description.contains("top-level string, number, and boolean"),
             "filters description should mention supported scalar payload types",
         );
 
         let filters_schema = nested_schema_property(&schema, "request", "filters");
-        let additional_properties = expect_some(
-            filters_schema.get("additionalProperties"),
-            "request.filters additionalProperties",
-        );
-        let allowed_types = expect_some(
-            additional_properties.get("type").and_then(Value::as_array),
-            "request.filters additionalProperties.type",
-        );
-        assert_true(
+        let additional_properties = filters_schema
+            .get("additionalProperties")
+            .expect("request.filters additionalProperties");
+        let allowed_types = additional_properties
+            .get("type")
+            .and_then(Value::as_array)
+            .expect("request.filters additionalProperties.type");
+        assert!(
             allowed_types.contains(&Value::String("string".to_string()))
                 && allowed_types.contains(&Value::String("number".to_string()))
                 && allowed_types.contains(&Value::String("boolean".to_string())),
@@ -1872,7 +1825,7 @@ mod tests {
     fn routine_update_schema_exposes_supported_fields_and_limits() {
         let schema = routine_update_parameters_schema();
         let errors = validate_tool_schema(&schema, "routine_update");
-        assert_true(
+        assert!(
             errors.is_empty(),
             "routine_update schema should validate cleanly",
         );
@@ -1888,24 +1841,20 @@ mod tests {
             let _ = schema_property(&schema, field);
         }
 
-        let schedule_description = expect_some(
-            schema_property(&schema, "schedule")
-                .get("description")
-                .and_then(Value::as_str),
-            "schedule description",
-        );
-        assert_true(
+        let schedule_description = schema_property(&schema, "schedule")
+            .get("description")
+            .and_then(Value::as_str)
+            .expect("schedule description");
+        assert!(
             schedule_description.contains("cron triggers"),
             "schedule description should mention cron triggers",
         );
 
-        let timezone_description = expect_some(
-            schema_property(&schema, "timezone")
-                .get("description")
-                .and_then(Value::as_str),
-            "timezone description",
-        );
-        assert_true(
+        let timezone_description = schema_property(&schema, "timezone")
+            .get("description")
+            .and_then(Value::as_str)
+            .expect("timezone description");
+        assert!(
             timezone_description.contains("cron triggers"),
             "timezone description should mention cron triggers",
         );
@@ -1915,24 +1864,24 @@ mod tests {
     fn event_emit_parameters_schema_prefers_canonical_event_source() {
         let schema = event_emit_parameters_schema();
         let errors = validate_tool_schema(&schema, "event_emit");
-        assert_true(
+        assert!(
             errors.is_empty(),
             "event_emit schema should validate cleanly",
         );
 
-        assert_true(
+        assert!(
             schema_property(&schema, "event_source").is_object(),
             "event_emit parameters schema should expose event_source",
         );
-        let required = expect_some(
-            schema.get("required").and_then(Value::as_array),
-            "event_emit required list",
-        );
-        assert_true(
+        let required = schema
+            .get("required")
+            .and_then(Value::as_array)
+            .expect("event_emit required list");
+        assert!(
             required.contains(&Value::String("event_source".to_string())),
             "event_emit parameters schema should require event_source",
         );
-        assert_true(
+        assert!(
             maybe_schema_property(&schema, "source").is_none(),
             "event_emit parameters schema should hide source alias",
         );
@@ -1941,12 +1890,12 @@ mod tests {
     #[test]
     fn event_emit_discovery_schema_keeps_source_alias() {
         let schema = event_emit_discovery_schema();
-        let any_of = expect_some(
-            schema.get("anyOf").and_then(Value::as_array),
-            "event_emit discovery anyOf",
-        );
-        assert_equal(any_of.len(), 2usize);
-        assert_true(
+        let any_of = schema
+            .get("anyOf")
+            .and_then(Value::as_array)
+            .expect("event_emit discovery anyOf");
+        assert_eq!(any_of.len(), 2usize);
+        assert!(
             schema_property(&schema, "source").is_object(),
             "event_emit discovery schema should keep source alias",
         );
