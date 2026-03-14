@@ -267,6 +267,7 @@ pub struct ScoreBreakdown {
 
 // ---------------------------------------------------------------------------
 // Static regex patterns (compiled once via LazyLock)
+// SAFETY: all regexes below are hardcoded literals — expect cannot fail.
 // ---------------------------------------------------------------------------
 
 use std::sync::LazyLock;
@@ -356,6 +357,7 @@ struct PatternOverride {
 }
 
 /// Default pattern overrides, compiled once.
+/// SAFETY: all regexes below are hardcoded literals — expect cannot fail.
 static DEFAULT_OVERRIDES: LazyLock<Vec<PatternOverride>> = LazyLock::new(|| {
     vec![
         // Flash tier: greetings and acknowledgments
@@ -451,6 +453,7 @@ fn score_complexity_internal(
 
     // Check for explicit tier hint (e.g. "[tier:flash]")
     if let Some(caps) = RE_TIER_HINT.captures(prompt) {
+        // SAFETY: RE_TIER_HINT has exactly one capture group; get(1) is guaranteed Some after match.
         let tier_str = caps.get(1).expect("capture group 1 exists").as_str();
         let tier = match tier_str.to_lowercase().as_str() {
             "flash" => Tier::Flash,
@@ -758,6 +761,7 @@ impl SmartRoutingProvider {
 
         // Highest priority: explicit tier hints (e.g. "[tier:flash]")
         if let Some(caps) = RE_TIER_HINT.captures(last_user_msg) {
+            // SAFETY: RE_TIER_HINT has exactly one capture group; get(1) is guaranteed Some after match.
             let tier_str = caps.get(1).expect("capture group 1 exists").as_str();
             let tier = match tier_str.to_lowercase().as_str() {
                 "flash" => Tier::Flash,

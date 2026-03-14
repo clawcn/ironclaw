@@ -157,12 +157,14 @@ impl Sanitizer {
         ];
 
         let pattern_strings: Vec<&str> = patterns.iter().map(|p| p.pattern.as_str()).collect();
+        // SAFETY: all patterns above are hardcoded string literals — AhoCorasick cannot fail.
         let pattern_matcher = AhoCorasick::builder()
             .ascii_case_insensitive(true)
             .build(&pattern_strings)
             .expect("Failed to build pattern matcher");
 
-        // Regex patterns for more complex detection
+        // Regex patterns for more complex detection.
+        // SAFETY: all regexes below are hardcoded literals — unwrap cannot fail.
         let regex_patterns = vec![
             RegexPattern {
                 regex: Regex::new(r"(?i)base64[:\s]+[A-Za-z0-9+/=]{50,}").unwrap(),

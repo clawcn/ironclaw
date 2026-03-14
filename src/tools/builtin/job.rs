@@ -330,7 +330,11 @@ impl CreateJobTool {
         ctx: &JobContext,
     ) -> Result<ToolOutput, ToolError> {
         let start = std::time::Instant::now();
-        let jm = self.job_manager.as_ref().expect("sandbox deps required");
+        let jm = self.job_manager.as_ref().ok_or_else(|| {
+            ToolError::ExecutionFailed(
+                "Sandbox execution requires a configured job manager (container runtime not available)".to_string(),
+            )
+        })?;
 
         let job_id = Uuid::new_v4();
         let (project_dir, browse_id) = resolve_project_dir(explicit_dir, job_id)?;

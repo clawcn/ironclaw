@@ -54,20 +54,22 @@ pub struct PolicyRule {
 
 impl PolicyRule {
     /// Create a new policy rule.
+    ///
+    /// Returns an error if `pattern` is not a valid regex.
     pub fn new(
         id: impl Into<String>,
         description: impl Into<String>,
         pattern: &str,
         severity: Severity,
         action: PolicyAction,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, regex::Error> {
+        Ok(Self {
             id: id.into(),
             description: description.into(),
             severity,
-            pattern: Regex::new(pattern).expect("Invalid policy regex"),
+            pattern: Regex::new(pattern)?,
             action,
-        }
+        })
     }
 
     /// Check if content matches this rule.
@@ -130,72 +132,94 @@ impl Default for Policy {
     fn default() -> Self {
         let mut policy = Self::new();
 
-        // Add default rules
+        // All regex patterns below are hardcoded literals validated by tests.
+        // SAFETY: unwrap is safe — these are compile-time constant patterns.
 
         // Block attempts to access system files
-        policy.add_rule(PolicyRule::new(
-            "system_file_access",
-            "Attempt to access system files",
-            r"(?i)(/etc/passwd|/etc/shadow|\.ssh/|\.aws/credentials)",
-            Severity::Critical,
-            PolicyAction::Block,
-        ));
+        policy.add_rule(
+            PolicyRule::new(
+                "system_file_access",
+                "Attempt to access system files",
+                r"(?i)(/etc/passwd|/etc/shadow|\.ssh/|\.aws/credentials)",
+                Severity::Critical,
+                PolicyAction::Block,
+            )
+            .unwrap(),
+        );
 
         // Block cryptocurrency private key patterns
-        policy.add_rule(PolicyRule::new(
-            "crypto_private_key",
-            "Potential cryptocurrency private key",
-            r"(?i)(private.?key|seed.?phrase|mnemonic).{0,20}[0-9a-f]{64}",
-            Severity::Critical,
-            PolicyAction::Block,
-        ));
+        policy.add_rule(
+            PolicyRule::new(
+                "crypto_private_key",
+                "Potential cryptocurrency private key",
+                r"(?i)(private.?key|seed.?phrase|mnemonic).{0,20}[0-9a-f]{64}",
+                Severity::Critical,
+                PolicyAction::Block,
+            )
+            .unwrap(),
+        );
 
         // Warn on SQL-like patterns
-        policy.add_rule(PolicyRule::new(
-            "sql_pattern",
-            "SQL-like pattern detected",
-            r"(?i)(DROP\s+TABLE|DELETE\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET)",
-            Severity::Medium,
-            PolicyAction::Warn,
-        ));
+        policy.add_rule(
+            PolicyRule::new(
+                "sql_pattern",
+                "SQL-like pattern detected",
+                r"(?i)(DROP\s+TABLE|DELETE\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET)",
+                Severity::Medium,
+                PolicyAction::Warn,
+            )
+            .unwrap(),
+        );
 
         // Block shell command injection patterns.
         // Only match actual dangerous command sequences, NOT backticked content
         // (backticks are standard markdown code formatting, not shell injection).
-        policy.add_rule(PolicyRule::new(
-            "shell_injection",
-            "Potential shell command injection",
-            r"(?i)(;\s*rm\s+-rf|;\s*curl\s+.*\|\s*sh)",
-            Severity::Critical,
-            PolicyAction::Block,
-        ));
+        policy.add_rule(
+            PolicyRule::new(
+                "shell_injection",
+                "Potential shell command injection",
+                r"(?i)(;\s*rm\s+-rf|;\s*curl\s+.*\|\s*sh)",
+                Severity::Critical,
+                PolicyAction::Block,
+            )
+            .unwrap(),
+        );
 
         // Warn on excessive URLs
-        policy.add_rule(PolicyRule::new(
-            "excessive_urls",
-            "Excessive number of URLs detected",
-            r"(https?://[^\s]+\s*){10,}",
-            Severity::Low,
-            PolicyAction::Warn,
-        ));
+        policy.add_rule(
+            PolicyRule::new(
+                "excessive_urls",
+                "Excessive number of URLs detected",
+                r"(https?://[^\s]+\s*){10,}",
+                Severity::Low,
+                PolicyAction::Warn,
+            )
+            .unwrap(),
+        );
 
         // Block encoded payloads that look like exploits
-        policy.add_rule(PolicyRule::new(
-            "encoded_exploit",
-            "Potential encoded exploit payload",
-            r"(?i)(base64_decode|eval\s*\(\s*base64|atob\s*\()",
-            Severity::High,
-            PolicyAction::Sanitize,
-        ));
+        policy.add_rule(
+            PolicyRule::new(
+                "encoded_exploit",
+                "Potential encoded exploit payload",
+                r"(?i)(base64_decode|eval\s*\(\s*base64|atob\s*\()",
+                Severity::High,
+                PolicyAction::Sanitize,
+            )
+            .unwrap(),
+        );
 
         // Warn on very long strings without spaces (potential obfuscation)
-        policy.add_rule(PolicyRule::new(
-            "obfuscated_string",
-            "Potential obfuscated content",
-            r"[^\s]{500,}",
-            Severity::Medium,
-            PolicyAction::Warn,
-        ));
+        policy.add_rule(
+            PolicyRule::new(
+                "obfuscated_string",
+                "Potential obfuscated content",
+                r"[^\s]{500,}",
+                Severity::Medium,
+                PolicyAction::Warn,
+            )
+            .unwrap(),
+        );
 
         policy
     }

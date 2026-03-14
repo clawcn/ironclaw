@@ -92,7 +92,10 @@ impl Session {
             None => self.create_thread(),
             Some(id) => {
                 if self.threads.contains_key(&id) {
-                    // Safe: contains_key confirmed the entry exists.
+                    // Entry existence confirmed by contains_key above.
+                    // get_mut borrows self.threads mutably, so we can't
+                    // combine the check and access into if-let without
+                    // conflicting with the self.create_thread() fallback.
                     self.threads.get_mut(&id).unwrap()
                 } else {
                     // Stale active_thread ID: create a new thread, which

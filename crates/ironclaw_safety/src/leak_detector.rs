@@ -412,6 +412,8 @@ fn extract_literal_prefix(pattern: &str) -> Option<String> {
 }
 
 /// Default leak detection patterns.
+///
+/// SAFETY: all regexes below are hardcoded literals — unwrap cannot fail.
 fn default_patterns() -> Vec<LeakPattern> {
     vec![
         // OpenAI API keys
