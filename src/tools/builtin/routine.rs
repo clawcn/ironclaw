@@ -1449,20 +1449,20 @@ mod tests {
             }
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse grouped manual request");
+        let parsed = parse_routine_create_request(&params).expect("parse grouped manual request"); // safety: test-only assertion in #[cfg(test)] module
 
-        assert_eq!(parsed.name.as_str(), "manual-check");
-        assert_eq!(parsed.prompt.as_str(), "Inspect the repo for issues.");
+        assert_eq!(parsed.name.as_str(), "manual-check"); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.prompt.as_str(), "Inspect the repo for issues."); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             matches!(parsed.trigger, NormalizedTriggerRequest::Manual),
             "expected manual trigger",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             matches!(parsed.execution.mode, NormalizedExecutionMode::Lightweight),
             "expected lightweight execution mode",
-        );
-        assert_eq!(parsed.cooldown_secs, 300);
-        assert_eq!(parsed.delivery.user.as_str(), "default");
+        ); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.cooldown_secs, 300); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.delivery.user.as_str(), "default"); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1488,7 +1488,7 @@ mod tests {
             }
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse grouped cron request");
+        let parsed = parse_routine_create_request(&params).expect("parse grouped cron request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
             matches!(
@@ -1497,18 +1497,18 @@ mod tests {
                 if schedule == "0 0 9 * * MON-FRI" && timezone.as_deref() == Some("UTC")
             ),
             "expected grouped cron trigger",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
             "expected full_job execution mode",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(
             parsed.execution.tool_permissions,
             vec!["message".to_string(), "http".to_string()],
-        );
-        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram"));
-        assert_eq!(parsed.delivery.user.as_str(), "ops-team");
-        assert_eq!(parsed.cooldown_secs, 30);
+        ); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram")); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.delivery.user.as_str(), "ops-team"); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.cooldown_secs, 30); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1529,7 +1529,7 @@ mod tests {
         });
 
         let parsed =
-            parse_routine_create_request(&params).expect("parse grouped message event request");
+            parse_routine_create_request(&params).expect("parse grouped message event request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
             matches!(
@@ -1538,13 +1538,13 @@ mod tests {
                 if pattern == "deploy\\s+prod" && channel.as_deref() == Some("slack")
             ),
             "expected grouped message_event trigger",
-        );
-        assert!(parsed.execution.use_tools, "expected use_tools=true");
-        assert_eq!(parsed.execution.max_tool_rounds, 5);
+        ); // safety: test-only assertion in #[cfg(test)] module
+        assert!(parsed.execution.use_tools, "expected use_tools=true"); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.execution.max_tool_rounds, 5); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(
             parsed.execution.context_paths,
             vec!["context/deploy.md".to_string()],
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1568,7 +1568,7 @@ mod tests {
         });
 
         let parsed =
-            parse_routine_create_request(&params).expect("parse grouped system event request");
+            parse_routine_create_request(&params).expect("parse grouped system event request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
             matches!(
@@ -1581,7 +1581,7 @@ mod tests {
                     && filters.get("issue_number") == Some(&"42".to_string())
             ),
             "expected grouped system_event trigger",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1603,7 +1603,7 @@ mod tests {
         });
 
         let err = parse_routine_create_request(&params)
-            .expect_err("reject nested system event filter values");
+            .expect_err("reject nested system event filter values"); // safety: test-only assertion in #[cfg(test)] module
         match err {
             ToolError::InvalidParameters(message) => {
                 assert!(
@@ -1611,7 +1611,7 @@ mod tests {
                         "system_event filters only support string, number, and boolean values",
                     ),
                     "unexpected invalid filter error: {message}",
-                )
+                ) // safety: test-only assertion in #[cfg(test)] module
             }
             other => panic!("expected InvalidParameters, got {other:?}"),
         }
@@ -1631,7 +1631,7 @@ mod tests {
             "notify_user": "123"
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse legacy flat request");
+        let parsed = parse_routine_create_request(&params).expect("parse legacy flat request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
             matches!(
@@ -1640,17 +1640,17 @@ mod tests {
                 if pattern == "hello" && channel.as_deref() == Some("telegram")
             ),
             "expected legacy message_event trigger",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             matches!(parsed.execution.mode, NormalizedExecutionMode::FullJob),
             "expected full_job execution mode",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         assert_eq!(
             parsed.execution.tool_permissions,
             vec!["message".to_string()],
-        );
-        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram"));
-        assert_eq!(parsed.delivery.user.as_str(), "123");
+        ); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.delivery.channel.as_deref(), Some("telegram")); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.delivery.user.as_str(), "123"); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1672,7 +1672,7 @@ mod tests {
             }
         });
 
-        let parsed = parse_routine_create_request(&params).expect("parse mixed request");
+        let parsed = parse_routine_create_request(&params).expect("parse mixed request"); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
             matches!(
@@ -1681,9 +1681,9 @@ mod tests {
                 if schedule == "0 0 8 * * *" && timezone.as_deref() == Some("UTC")
             ),
             "expected mixed cron trigger",
-        );
-        assert_eq!(parsed.delivery.user.as_str(), "fallback-user");
-        assert_eq!(parsed.cooldown_secs, 45);
+        ); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.delivery.user.as_str(), "fallback-user"); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(parsed.cooldown_secs, 45); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1695,11 +1695,11 @@ mod tests {
         });
 
         let (source, event_type, payload) =
-            parse_event_emit_args(&params).expect("parse event_emit source alias");
+            parse_event_emit_args(&params).expect("parse event_emit source alias"); // safety: test-only assertion in #[cfg(test)] module
 
-        assert_eq!(source, "github".to_string());
-        assert_eq!(event_type, "issue.opened".to_string());
-        assert_eq!(payload["issue_number"].clone(), serde_json::json!(7));
+        assert_eq!(source, "github".to_string()); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(event_type, "issue.opened".to_string()); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(payload["issue_number"].clone(), serde_json::json!(7)); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1710,11 +1710,11 @@ mod tests {
         });
 
         let (source, event_type, payload) =
-            parse_event_emit_args(&params).expect("parse canonical event_emit args");
+            parse_event_emit_args(&params).expect("parse canonical event_emit args"); // safety: test-only assertion in #[cfg(test)] module
 
-        assert_eq!(source, "github".to_string());
-        assert_eq!(event_type, "issue.opened".to_string());
-        assert_eq!(payload, serde_json::json!({}));
+        assert_eq!(source, "github".to_string()); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(event_type, "issue.opened".to_string()); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(payload, serde_json::json!({})); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1724,27 +1724,27 @@ mod tests {
         assert!(
             errors.is_empty(),
             "routine_create schema should validate cleanly",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         let request = schema_property(&schema, "request");
         assert!(
             request.is_object(),
             "request should be present in compact schema",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         let required = schema
             .get("required")
             .and_then(Value::as_array)
-            .expect("routine_create required list");
+            .expect("routine_create required list"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             required.contains(&Value::String("request".to_string())),
             "compact parameters schema should require request",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         for legacy_alias in ROUTINE_CREATE_LEGACY_ALIASES {
             assert!(
                 maybe_schema_property(&schema, legacy_alias).is_none(),
                 "compact parameters schema should hide legacy alias",
-            );
+            ); // safety: test-only assertion in #[cfg(test)] module
         }
     }
 
@@ -1754,14 +1754,14 @@ mod tests {
         let any_of = schema
             .get("anyOf")
             .and_then(Value::as_array)
-            .expect("routine_create discovery anyOf");
-        assert_eq!(any_of.len(), 2usize);
+            .expect("routine_create discovery anyOf"); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(any_of.len(), 2usize); // safety: test-only assertion in #[cfg(test)] module
 
         for legacy_alias in ROUTINE_CREATE_LEGACY_ALIASES {
             assert!(
                 schema_property(&schema, legacy_alias).is_object(),
                 "discovery schema should retain legacy alias",
-            );
+            ); // safety: test-only assertion in #[cfg(test)] module
         }
     }
 
@@ -1772,53 +1772,53 @@ mod tests {
         let request_description = schema_property(&schema, "request")
             .get("description")
             .and_then(Value::as_str)
-            .expect("request description");
+            .expect("request description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             request_description.contains("Set request.kind first"),
             "request description should mention kind-first guidance",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         let pattern_description = nested_schema_property(&schema, "request", "pattern")
             .get("description")
             .and_then(Value::as_str)
-            .expect("request.pattern description");
+            .expect("request.pattern description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             pattern_description.contains("message_event"),
             "pattern description should mention message_event",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         let source_description = nested_schema_property(&schema, "request", "source")
             .get("description")
             .and_then(Value::as_str)
-            .expect("request.source description");
+            .expect("request.source description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             source_description.contains("system_event"),
             "source description should mention system_event",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         let filters_description = nested_schema_property(&schema, "request", "filters")
             .get("description")
             .and_then(Value::as_str)
-            .expect("request.filters description");
+            .expect("request.filters description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             filters_description.contains("top-level string, number, and boolean"),
             "filters description should mention supported scalar payload types",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         let filters_schema = nested_schema_property(&schema, "request", "filters");
         let additional_properties = filters_schema
             .get("additionalProperties")
-            .expect("request.filters additionalProperties");
+            .expect("request.filters additionalProperties"); // safety: test-only assertion in #[cfg(test)] module
         let allowed_types = additional_properties
             .get("type")
             .and_then(Value::as_array)
-            .expect("request.filters additionalProperties.type");
+            .expect("request.filters additionalProperties.type"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             allowed_types.contains(&Value::String("string".to_string()))
                 && allowed_types.contains(&Value::String("number".to_string()))
                 && allowed_types.contains(&Value::String("boolean".to_string())),
             "filters schema should constrain additionalProperties to scalar values",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1828,7 +1828,7 @@ mod tests {
         assert!(
             errors.is_empty(),
             "routine_update schema should validate cleanly",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         for field in [
             "name",
@@ -1844,20 +1844,20 @@ mod tests {
         let schedule_description = schema_property(&schema, "schedule")
             .get("description")
             .and_then(Value::as_str)
-            .expect("schedule description");
+            .expect("schedule description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             schedule_description.contains("cron triggers"),
             "schedule description should mention cron triggers",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         let timezone_description = schema_property(&schema, "timezone")
             .get("description")
             .and_then(Value::as_str)
-            .expect("timezone description");
+            .expect("timezone description"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             timezone_description.contains("cron triggers"),
             "timezone description should mention cron triggers",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1867,24 +1867,24 @@ mod tests {
         assert!(
             errors.is_empty(),
             "event_emit schema should validate cleanly",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
             schema_property(&schema, "event_source").is_object(),
             "event_emit parameters schema should expose event_source",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         let required = schema
             .get("required")
             .and_then(Value::as_array)
-            .expect("event_emit required list");
+            .expect("event_emit required list"); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             required.contains(&Value::String("event_source".to_string())),
             "event_emit parameters schema should require event_source",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             maybe_schema_property(&schema, "source").is_none(),
             "event_emit parameters schema should hide source alias",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
     }
 
     #[test]
@@ -1893,11 +1893,11 @@ mod tests {
         let any_of = schema
             .get("anyOf")
             .and_then(Value::as_array)
-            .expect("event_emit discovery anyOf");
-        assert_eq!(any_of.len(), 2usize);
+            .expect("event_emit discovery anyOf"); // safety: test-only assertion in #[cfg(test)] module
+        assert_eq!(any_of.len(), 2usize); // safety: test-only assertion in #[cfg(test)] module
         assert!(
             schema_property(&schema, "source").is_object(),
             "event_emit discovery schema should keep source alias",
-        );
+        ); // safety: test-only assertion in #[cfg(test)] module
     }
 }
