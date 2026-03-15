@@ -3008,7 +3008,13 @@ impl ExtensionManager {
 
         // Verify runtime infrastructure is available and clone Arcs so we don't
         // hold the RwLock guard across awaits.
-        let (channel_runtime, channel_manager, pairing_store, wasm_channel_router) = {
+        let (
+            channel_runtime,
+            channel_manager,
+            pairing_store,
+            wasm_channel_router,
+            wasm_channel_owner_ids,
+        ) = {
             let rt_guard = self.channel_runtime.read().await;
             let rt = rt_guard.as_ref().ok_or_else(|| {
                 ExtensionError::ActivationFailed("WASM channel runtime not configured".to_string())
@@ -3018,6 +3024,7 @@ impl ExtensionManager {
                 Arc::clone(&rt.channel_manager),
                 Arc::clone(&rt.pairing_store),
                 Arc::clone(&rt.wasm_channel_router),
+                rt.wasm_channel_owner_ids.clone(),
             )
         };
 
@@ -3047,6 +3054,7 @@ impl ExtensionManager {
             Arc::clone(&channel_runtime),
             Arc::clone(&pairing_store),
             settings_store,
+            self.user_id.clone(),
         )
         .with_secrets_store(Arc::clone(&self.secrets));
         let loaded = loader
@@ -3071,11 +3079,7 @@ impl ExtensionManager {
             .ok()
             .map(|s| s.expose().to_string());
 
-        let channel_arc = Arc::new(
-            loaded
-                .channel
-                .with_owner_binding(self.user_id.clone(), owner_actor_id),
-        );
+        let channel_arc = Arc::new(loaded.channel.with_owner_actor_id(owner_actor_id));
 
         // Inject runtime config (tunnel_url, webhook_secret, owner_id)
         {

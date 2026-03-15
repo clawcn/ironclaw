@@ -49,6 +49,7 @@ pub async fn setup_wasm_channels(
         Arc::clone(&runtime),
         Arc::clone(&pairing_store),
         settings_store,
+        config.owner_id.clone(),
     );
     if let Some(secrets) = secrets_store {
         loader = loader.with_secrets_store(Arc::clone(secrets));
@@ -138,11 +139,7 @@ async fn register_channel(
         require_secret: webhook_secret.is_some(),
     }];
 
-    let channel_arc = Arc::new(
-        loaded
-            .channel
-            .with_owner_binding(config.owner_id.clone(), owner_actor_id.clone()),
-    );
+    let channel_arc = Arc::new(loaded.channel.with_owner_actor_id(owner_actor_id.clone()));
 
     // Inject runtime config (tunnel URL, webhook secret, owner_id).
     {
