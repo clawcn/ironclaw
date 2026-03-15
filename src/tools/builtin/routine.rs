@@ -138,6 +138,9 @@ fn execution_properties() -> Value {
         },
         "max_tool_rounds": {
             "type": "integer",
+            "minimum": 1,
+            "maximum": crate::agent::routine::MAX_TOOL_ROUNDS_LIMIT,
+            "default": 3,
             "description": "Only applies when execution.mode='lightweight' and use_tools=true. Runtime-capped to prevent loops."
         },
         "tool_permissions": {
@@ -301,6 +304,9 @@ fn routine_create_schema(include_compatibility_aliases: bool) -> Value {
                 "max_tool_rounds".to_string(),
                 serde_json::json!({
                     "type": "integer",
+                    "minimum": 1,
+                    "maximum": crate::agent::routine::MAX_TOOL_ROUNDS_LIMIT,
+                    "default": 3,
                     "description": "Compatibility alias for execution.max_tool_rounds."
                 }),
             );
@@ -1737,7 +1743,7 @@ mod tests {
         assert!(
             // safety: test-only assertion in #[cfg(test)] module
             errors.is_empty(),
-            "routine_create schema should validate cleanly",
+            "routine_create schema should validate cleanly: {errors:?}",
         ); // safety: test-only assertion in #[cfg(test)] module
 
         let request = schema_property(&schema, "request");
@@ -1851,7 +1857,7 @@ mod tests {
         assert!(
             // safety: test-only assertion in #[cfg(test)] module
             errors.is_empty(),
-            "routine_update schema should validate cleanly",
+            "routine_update schema should validate cleanly: {errors:?}",
         ); // safety: test-only assertion in #[cfg(test)] module
 
         for field in [
@@ -1893,7 +1899,7 @@ mod tests {
         assert!(
             // safety: test-only assertion in #[cfg(test)] module
             errors.is_empty(),
-            "event_emit schema should validate cleanly",
+            "event_emit schema should validate cleanly: {errors:?}",
         ); // safety: test-only assertion in #[cfg(test)] module
 
         assert!(
